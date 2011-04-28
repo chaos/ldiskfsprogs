@@ -314,7 +314,7 @@ Index: e2fsprogs/lib/ext2fs/tst_read_ea.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/lib/ext2fs/tst_read_ea.c
-@@ -0,0 +1,219 @@
+@@ -0,0 +1,233 @@
 +/*
 + * tst_getsize.c --- this function tests the getsize function
 + *
@@ -324,6 +324,9 @@ Index: e2fsprogs/lib/ext2fs/tst_read_ea.c
 + * %End-Header%
 + */
 +
++#ifndef _GNU_SOURCE
++#define _GNU_SOURCE	/* for asprintf */
++#endif
 +#include <stdio.h>
 +#include <string.h>
 +#if HAVE_UNISTD_H
@@ -333,6 +336,17 @@ Index: e2fsprogs/lib/ext2fs/tst_read_ea.c
 +#include <time.h>
 +#include <sys/stat.h>
 +#include <sys/types.h>
++#ifdef HAVE_ATTR_XATTR_H
++#include <attr/xattr.h>
++#elif HAVE_SYS_XATTR_H
++#include <sys/xattr.h>
++#else
++/* This is just a test program, let's try to work around the lack of header */
++extern ssize_t fgetxattr (int __filedes, const char *__name,
++				void *__value, size_t __size);
++extern int fsetxattr (int __filedes, const char *__name,
++		      const void *__value, size_t __size, int __flags);
++#endif
 +#include <mntent.h>
 +#include <assert.h>
 +#if HAVE_ERRNO_H
@@ -534,3 +548,16 @@ Index: e2fsprogs/lib/ext2fs/tst_read_ea.c
 +			"\thope it is ok\n");
 +	return 0;
 +}
+Index: e2fsprogs/configure.in
+===================================================================
+--- e2fsprogs.orig/configure.in
++++ e2fsprogs/configure.in
+@@ -747,7 +747,7 @@ if test $cross_compiling = no; then
+ else
+   AC_CHECK_PROGS(BUILD_CC, gcc cc)
+ fi
+-AC_CHECK_HEADERS(dirent.h errno.h getopt.h malloc.h mntent.h paths.h semaphore.h setjmp.h signal.h stdarg.h stdint.h stdlib.h termios.h termio.h unistd.h utime.h linux/fd.h linux/major.h net/if_dl.h netinet/in.h sys/disklabel.h sys/file.h sys/ioctl.h sys/mkdev.h sys/mman.h sys/prctl.h sys/queue.h sys/resource.h sys/select.h sys/socket.h sys/sockio.h sys/stat.h sys/syscall.h sys/sysmacros.h sys/time.h sys/types.h sys/un.h sys/wait.h)
++AC_CHECK_HEADERS(attr/xattr.h dirent.h errno.h getopt.h malloc.h mntent.h paths.h semaphore.h setjmp.h signal.h stdarg.h stdint.h stdlib.h termios.h termio.h unistd.h utime.h linux/fd.h linux/major.h net/if_dl.h netinet/in.h sys/disklabel.h sys/file.h sys/ioctl.h sys/mkdev.h sys/mman.h sys/prctl.h sys/queue.h sys/resource.h sys/select.h sys/socket.h sys/sockio.h sys/stat.h sys/syscall.h sys/sysmacros.h sys/time.h sys/types.h sys/un.h sys/wait.h sys/xattr.h)
+ AC_CHECK_HEADERS(sys/disk.h sys/mount.h,,,
+ [[
+ #if HAVE_SYS_QUEUE_H

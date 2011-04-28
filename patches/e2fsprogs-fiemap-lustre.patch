@@ -386,8 +386,8 @@ Index: e2fsprogs/misc/filefrag.c
 +		}
 +		count++;
 +		if (force_extent &&
-+		    (last_block && (block != last_block + 1) ||
-+		     fm_ext.fe_logical + fm_ext.fe_length != logical)) {
++		    (last_block && ((block != last_block + 1) ||
++		     fm_ext.fe_logical + fm_ext.fe_length != logical))) {
 +			print_extent_info(&fm_ext, *num_extents - 1,
 +					  blk_shift, fileinfo);
 +			fm_ext.fe_logical = logical;
@@ -428,7 +428,7 @@ Index: e2fsprogs/misc/filefrag.c
 -	int		num_extents = 0, expected;
 +	unsigned long	numblocks;
 +	int		data_blocks_per_cyl = 1;
-+	int		num_extents = 1, expected;
++	int		num_extents = 1, expected = ~0;
  	int		is_ext2 = 0;
 -	static int	once = 1;
 +	static int	last_device;

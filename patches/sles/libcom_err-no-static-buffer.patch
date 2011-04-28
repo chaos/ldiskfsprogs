@@ -4,7 +4,29 @@ Index: e2fsprogs/lib/et/error_message.c
 ===================================================================
 --- e2fsprogs.orig/lib/et/error_message.c
 +++ e2fsprogs/lib/et/error_message.c
-@@ -148,25 +148,7 @@ const char * error_message (errcode_t co
+@@ -102,13 +102,6 @@
+ #include "error_table.h"
+ #include "internal.h"
+ 
+-#ifdef TLS
+-#define THREAD_LOCAL static TLS
+-#else
+-#define THREAD_LOCAL static
+-#endif
+-
+-THREAD_LOCAL char buffer[25];
+ 
+ struct et_list * _et_list = (struct et_list *) NULL;
+ struct et_list * _et_dynamic_list = (struct et_list *) NULL;
+@@ -102,7 +95,6 @@ const char * error_message (errcode_t co
+     int offset;
+     struct et_list *et;
+     errcode_t table_num;
+-    int started = 0;
+     char *cp;
+ 
+     offset = (int) (code & ((1<<ERRCODE_RANGE)-1));
+@@ -148,25 +140,7 @@ const char * error_message (errcode_t co
      }
      et_list_unlock();
  oops:

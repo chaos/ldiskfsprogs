@@ -42,7 +42,7 @@ Index: e2fsprogs/configure.in
  AC_FUNC_VPRINTF
  dnl Check to see if dirent has member d_reclen. On cygwin those d_reclen
  dnl is not decleared.
-@@ -954,6 +980,51 @@ AC_CHECK_LIB(db-4.8, db_env_create,
+@@ -954,6 +980,52 @@ AC_CHECK_LIB(db-4.8, db_env_create,
  AC_DEFINE(HAVE_DB4)])
  AC_SUBST(DB4VERSION)
  dnl
@@ -50,8 +50,9 @@ Index: e2fsprogs/configure.in
 +dnl
 +AC_ARG_WITH(
 +	[sqlite3],
-+	[  --with-sqlite3=DIR      location of sqlite3 library (default /usr/lib)],,
-+	[with_sqlite3=/usr/lib])
++	[  --with-sqlite3=DIR      location of sqlite3 library (default /usr/lib)],
++	[SQLITE3_LIBS="-L$with_sqlite3"],,
++	[SQLITE3_LIBS="-L/usr/lib64 -L/usr/lib"])
 +
 +dnl do not check sqlite3 library if e2scan is disabled
 +if test x"$E2SCAN_CMT" == x; then
@@ -61,10 +62,10 @@ Index: e2fsprogs/configure.in
 +dnl
 +dnl check static sqlite3 first
 +dnl
-+CFLAGS="$CFLAGS_OLD -L$with_sqlite3 -static -pthread"
++CFLAGS="$CFLAGS_OLD $SQLITE3_LIBS -static -pthread"
 +AC_CHECK_LIB(sqlite3, sqlite3_open,
 +	[
-+	SQLITE3_LIB="-L$with_sqlite3 -static -pthread -lsqlite3"
++	SQLITE3_LIB="$SQLITE3_LIBS -static -pthread -lsqlite3"
 +	AC_DEFINE(HAVE_SQLITE3)
 +	])
 +
@@ -73,10 +74,10 @@ Index: e2fsprogs/configure.in
 +dnl static sqlite3 is not found, check dynamic sqlite3
 +dnl
 +	AC_MSG_WARN(no static sqlite3 - looking for dynamic one)
-+	CFLAGS="$CFLAGS_OLD -L$with_sqlite3 -pthread"
++	CFLAGS="$CFLAGS_OLD $SQLITE3_LIBS -pthread"
 +	AC_CHECK_LIB(sqlite3, sqlite3_close,
 +		[
-+		SQLITE3_LIB="-L$with_sqlite3 -pthread -lsqlite3"
++		SQLITE3_LIB="$SQLITE3_LIBS -pthread -lsqlite3"
 +		AC_DEFINE(HAVE_SQLITE3)
 +		])
 +fi
@@ -107,14 +108,14 @@ Index: e2fsprogs/e2fsprogs.spec.in
 ===================================================================
 --- e2fsprogs.orig/e2fsprogs.spec.in
 +++ e2fsprogs/e2fsprogs.spec.in
-@@ -150,6 +150,7 @@ exit 0
- %{_sbindir}/e2freefrag
- %{_sbindir}/e4defrag
- @LFSCK_CMT@%{_sbindir}/lfsck
+@@ -146,6 +146,7 @@ exit 0
+ %{_root_sbindir}/mkfs.ext4dev
+ %{_root_sbindir}/resize2fs
+ %{_root_sbindir}/tune2fs
 +@E2SCAN_CMT@%{_sbindir}/e2scan
- 
- %{_root_libdir}/libblkid.so.*
- %{_root_libdir}/libcom_err.so.*
+ %{_sbindir}/filefrag
+ %{_sbindir}/mklost+found
+ %{_sbindir}/e2freefrag
 @@ -183,6 +184,7 @@ exit 0
  %{_mandir}/man8/fsck.ext4dev.8*
  %{_mandir}/man8/e2image.8*
@@ -518,7 +519,7 @@ Index: e2fsprogs/e2scan/e2scan.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2scan/e2scan.c
-@@ -0,0 +1,640 @@
+@@ -0,0 +1,639 @@
 +#define _GNU_SOURCE
 +#define _FILE_OFFSET_BITS 64
 +#define _XOPEN_SOURCE		/* for getdate */
@@ -830,8 +831,8 @@ Index: e2fsprogs/e2scan/e2scan.c
 +	ext2_ino_t ino;
 +	dgrp_t nr;
 +	time_t t;
++	pid_t pid = 0;
 +	int c;
-+	pid_t pid;
 +
 +	/*
 +	 * by default find for files which are modified less than one
@@ -910,7 +911,6 @@ Index: e2fsprogs/e2scan/e2scan.c
 +					      NULL,
 +					    };
 +			const char **fmt;
-+			char *ret;
 +			struct tm tmptm, *tm = NULL;
 +			time_t now = time(0);
 +
@@ -1309,7 +1309,7 @@ Index: e2fsprogs/e2scan/filelist.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2scan/filelist.c
-@@ -0,0 +1,455 @@
+@@ -0,0 +1,456 @@
 +#define _GNU_SOURCE
 +#define _FILE_OFFSET_BITS 64
 +
@@ -1476,7 +1476,8 @@ Index: e2fsprogs/e2scan/filelist.c
 +			dentry->name, namelen, name);
 +		exit(1);
 +	}
-+	asprintf(&dentry->name, "%.*s", namelen, name);
++	if (asprintf(&dentry->name, "%.*s", namelen, name) == -1)
++		dentry->name = "unable to allocate filename"; /* XXX: handle */
 +}
 +
 +/*
@@ -1700,7 +1701,7 @@ Index: e2fsprogs/e2scan/filelist.c
 +			       struct ext2_dir_entry *dirent,
 +			       int namelen)
 +{
-+	struct e2scan_dentry *dir, *subdir;
++	struct e2scan_dentry *dir, *subdir = NULL;
 +	int created;
 +	int ret;
 +	struct ext2_dir_entry_2 *dirent2;

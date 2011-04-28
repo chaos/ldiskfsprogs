@@ -2,7 +2,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
-@@ -0,0 +1,1106 @@
+@@ -0,0 +1,1113 @@
 +#
 +# spec file for package e2fsprogs (Version 1.41.9)
 +#
@@ -24,7 +24,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +
 +
 +Name:           e2fsprogs
-+License:        GPL v2 or later
++License:        GPLv2
 +Group:          System/Filesystems
 +Supplements:    filesystem(ext2) filesystem(ext3) filesystem(ext4)
 +BuildRequires:  libblkid-devel libuuid-devel pkg-config libdb-4_5-devel
@@ -38,7 +38,10 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +Version:        @E2FSPROGS_PKGVER@
 +Release:        0%{_vendor}
 +Summary:        Utilities for the Second Extended File System
-+Url:            http://e2fsprogs.sourceforge.net
++Url:            http://downloads.whamcloud.com/public/
++Provides:       ldiskfsprogs = %{version}
++@LFSCK_CMT@Requires: db4 >= @DB4VERSION@
++@LFSCK_CMT@BuildRequires: db4-devel >= 4.1 texinfo
 +Source:         %{name}-%{version}.tar.gz
 +BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 +
@@ -55,7 +58,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +    Theodore Ts'o <tytso@mit.edu>
 +
 +%package devel
-+License:        GPL v2 or later
++License:        GPLv2 and LGPLv2
 +Summary:        Dummy development package
 +Group:          Development/Libraries/C and C++
 +AutoReqProv:    on
@@ -77,7 +80,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +    Theodore Ts'o <tytso@mit.edu>
 +
 +%package -n libext2fs2
-+License:        GPL v2 or later
++License:        GPLv2
 +Summary:        Ext2fs libray
 +Group:          System/Filesystems
 +AutoReqProv:    on
@@ -93,7 +96,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +    Theodore Ts'o <tytso@mit.edu>
 +
 +%package -n libext2fs-devel
-+License:        GPL v2 or later
++License:        GPLv2
 +Summary:        Development files for libext2fs
 +Group:          Development/Libraries/C and C++
 +AutoReqProv:    on
@@ -110,7 +113,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +    Theodore Ts'o <tytso@mit.edu>
 +
 +%package -n libcom_err2
-+License:        GPL v2 or later
++License:        MIT
 +Summary:        E2fsprogs error reporting library
 +Group:          System/Filesystems
 +# bug437293
@@ -134,7 +137,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +    Theodore Ts'o <tytso@mit.edu>
 +
 +%package -n libcom_err-devel
-+License:        GPL v2 or later
++License:        MIT
 +Summary:        Development files for libcom_err
 +Group:          Development/Libraries/C and C++
 +AutoReqProv:    on
@@ -177,7 +180,10 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +  --disable-libuuid \
 +  --disable-uuidd \
 +  --disable-fsck \
-+  %{?extra_config_flags:%extra_config_flags} CFLAGS="$RPM_OPT_FLAGS"
++  %{?extra_config_flags:%extra_config_flags} CFLAGS="$RPM_OPT_FLAGS" \
++  --disable-defrag \
++  --with-lustre=@LUSTRE@ \
++  @LFSCK_CMT@ --enable-lfsck
 +make V=1
 +
 +%install
@@ -283,6 +289,7 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +%_libdir/pkgconfig/com_err.pc
 +%_libdir/pkgconfig/ss.pc
 +%_includedir/et
++%_includedir/com_err.h
 +%_includedir/ss
 +%_datadir/et
 +%_datadir/ss
@@ -1113,12 +1120,11 @@ Index: e2fsprogs/configure.in
 ===================================================================
 --- e2fsprogs.orig/configure.in
 +++ e2fsprogs/configure.in
-@@ -1232,7 +1232,7 @@ test -d lib || mkdir lib
- test -d include || mkdir include
- test -d include/linux || mkdir include/linux
+@@ -1234,6 +1234,7 @@ test -d lib || mkdir lib
  test -d include/asm || mkdir include/asm
--for i in MCONFIG Makefile e2fsprogs.spec \
-+for i in MCONFIG Makefile e2fsprogs.spec e2fsprogs-SUSE_LINUX-11.spec \
+ for i in MCONFIG Makefile e2fsprogs.spec \
+ 	e2fsprogs-RHEL-6.spec \
++	e2fsprogs-SUSE_LINUX-11.spec \
  	util/Makefile util/subst.conf util/gen-tarball \
  	lib/et/Makefile lib/ss/Makefile lib/e2p/Makefile \
  	lib/ext2fs/Makefile lib/ext2fs/ext2_types.h \
@@ -1126,51 +1132,23 @@ Index: e2fsprogs/contrib/build-rpm
 ===================================================================
 --- e2fsprogs.orig/contrib/build-rpm
 +++ e2fsprogs/contrib/build-rpm
-@@ -34,11 +34,46 @@ EXCLUDE="--exclude .hg* --exclude .pc*"
- 
- [ "`rpmbuild --version 2> /dev/null`" ] && RPM=rpmbuild || RPM=rpm
- 
-+# which distro and release
-+DISTRO=$(lsb_release -is)
-+RELEASE=$(lsb_release -rs)
-+# now the hacks in case either is empty
-+if [ -z "$DISTRO" ]; then
-+    echo "You really ought to install the lsb_release binary for this distro"
+@@ -43,6 +43,9 @@ EXCLUDE="--exclude .hg* --exclude .pc*"
+     if grep "Fedora " /etc/issue; then
+         DISTRO="Fedora"
+     fi
 +    if grep "SUSE Linux Enterprise Server " /etc/issue; then
 +        DISTRO="SUSE LINUX"
 +    fi
-+fi
-+if [ -z "$DISTRO" ]; then
-+    echo "Could not determine the distribution.  Please install the lsb_release binary"
-+    exit 1
-+fi
-+if [ -z "$RELEASE" ]; then
-+    echo "You really ought to install the lsb_release binary for this distro"
-+    case "$DISTRO" in
+ fi
+ if [ -z "$DISTRO" ]; then
+     echo "Could not determine the distribution.  Please install the lsb_release binary"
+@@ -54,6 +59,9 @@ EXCLUDE="--exclude .hg* --exclude .pc*"
+         Fedora)
+             RELEASE=$(grep Fedora /etc/issue | sed -e 's/Fedora release //' -e 's/ .*//')
+         ;;
 +        SUSE\ LINUX)
-+            if grep "SUSE Linux Enterprise Server 11 " /etc/issue; then
-+                RELEASE=11
-+            elif grep "SUSE Linux Enterprise Server 10 " /etc/issue; then
-+                RELEASE=10
-+            fi
++            RELEASE=$(grep SUSE /etc/issue | sed -e 's/SUSE Linux Enterprise Server //' -e 's/ .*//')
 +        ;;
-+    esac
-+fi
-+if [ -z "$RELEASE" ]; then
-+    echo "Could not determine the release.  Please install the lsb_release binary"
-+    exit 1
-+fi
-+
-+SPECFILE="$currdir/e2fsprogs-${DISTRO// /_}-$RELEASE.spec"
-+if [ ! -f "$SPECFILE" ]; then
-+    SPECFILE="$currdir/e2fsprogs.spec"
-+fi
- $RPM --define "_sourcedir $tmpdir" \
-      --define "_topdir ${RPM_TOPDIR:-$(rpm -E %_topdir)}" \
-      --define "_tmpdir ${RPM_TMPDIR:-$TMP}" \
-      --define "extra_config_flags ${EXTRA_CONFIG_FLAGS:-''}" \
--     -ba $currdir/e2fsprogs.spec
-+     -ba $SPECFILE
- 
- rpm_exit=$?
- rm -rf $tmpdir
+     esac
+ fi
+ if [ -z "$RELEASE" ]; then

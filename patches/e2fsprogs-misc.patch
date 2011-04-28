@@ -6,20 +6,6 @@ but 0 seems reasonable, and is better than random garbage.
 
 Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
 
-Index: e2fsprogs/lib/blkid/probe.c
-===================================================================
---- e2fsprogs.orig/lib/blkid/probe.c
-+++ e2fsprogs/lib/blkid/probe.c
-@@ -1296,7 +1296,8 @@ static int probe_hfsplus(struct blkid_pr
- 		return 0;
- 
- 	label_len = blkid_be16(key->unicode_len) * 2;
--	unicode_16be_to_utf8(label, sizeof(label), key->unicode, label_len);
-+	unicode_16be_to_utf8((unsigned char *)label, sizeof(label),
-+			     key->unicode, label_len);
- 	blkid_set_tag(probe->dev, "LABEL", label, 0);
- 	return 0;
- }
 Index: e2fsprogs/debugfs/debugfs.c
 ===================================================================
 --- e2fsprogs.orig/debugfs/debugfs.c
@@ -175,23 +161,7 @@ Index: e2fsprogs/e2fsprogs.spec.in
 ===================================================================
 --- e2fsprogs.orig/e2fsprogs.spec.in
 +++ e2fsprogs/e2fsprogs.spec.in
-@@ -135,6 +135,7 @@ exit 0
- %{_sbindir}/filefrag
- %{_sbindir}/mklost+found
- %{_sbindir}/e2freefrag
-+%{_sbindir}/e4defrag
- 
- %{_root_libdir}/libblkid.so.*
- %{_root_libdir}/libcom_err.so.*
-@@ -180,6 +181,7 @@ exit 0
- %{_mandir}/man8/tune2fs.8*
- %{_mandir}/man8/filefrag.8*
- %{_mandir}/man8/e2freefrag.8*
-+%{_mandir}/man8/e4defrag.8*
- 
- %files devel
- %defattr(-,root,root)
-@@ -212,6 +214,7 @@ exit 0
+@@ -212,6 +212,7 @@ exit 0
  %{_includedir}/blkid
  %{_includedir}/e2p
  %{_includedir}/et
@@ -199,6 +169,42 @@ Index: e2fsprogs/e2fsprogs.spec.in
  %{_includedir}/ext2fs
  %{_includedir}/ss
  %{_includedir}/uuid
+Index: e2fsprogs/lib/e2p/ls.c
+===================================================================
+--- e2fsprogs.orig/lib/e2p/ls.c
++++ e2fsprogs/lib/e2p/ls.c
+@@ -370,7 +370,7 @@ void list_super2(struct ext2_super_block
+ 		tm = sb->s_first_error_time;
+ 		fprintf(f, "First error time:         %s", ctime(&tm));
+ 		memset(buf, 0, sizeof(buf));
+-		strncpy(buf, sb->s_first_error_func,
++		strncpy(buf, (char *)sb->s_first_error_func,
+ 			sizeof(sb->s_first_error_func));
+ 		fprintf(f, "First error function:     %s\n", buf);
+ 		fprintf(f, "First error line #:       %u\n",
+@@ -384,7 +384,7 @@ void list_super2(struct ext2_super_block
+ 		tm = sb->s_last_error_time;
+ 		fprintf(f, "Last error time:          %s", ctime(&tm));
+ 		memset(buf, 0, sizeof(buf));
+-		strncpy(buf, sb->s_last_error_func,
++		strncpy(buf, (char *)sb->s_last_error_func,
+ 			sizeof(sb->s_last_error_func));
+ 		fprintf(f, "Last error function:      %s\n", buf);
+ 		fprintf(f, "Last error line #:        %u\n",
+Index: e2fsprogs/lib/ext2fs/ext2_io.h
+===================================================================
+--- e2fsprogs.orig/lib/ext2fs/ext2_io.h
++++ e2fsprogs/lib/ext2fs/ext2_io.h
+@@ -117,6 +117,9 @@ extern errcode_t io_channel_read_blk64(i
+ extern errcode_t io_channel_write_blk64(io_channel channel,
+ 					unsigned long long block,
+ 					int count, const void *data);
++extern errcode_t io_channel_discard(io_channel channel,
++				    unsigned long long block,
++				    unsigned long long count);
+ 
+ /* unix_io.c */
+ extern io_manager unix_io_manager;
 Index: e2fsprogs/lib/ext2fs/ext2fs.h
 ===================================================================
 --- e2fsprogs.orig/lib/ext2fs/ext2fs.h
@@ -287,6 +293,19 @@ Index: e2fsprogs/lib/ext2fs/progress.c
  	if (!(fs->flags & EXT2_FLAG_PRINT_PROGRESS))
  		return;
  	fprintf(stdout, "%.*s", (2*progress->log_max)+1, spaces);
+Index: e2fsprogs/lib/ext2fs/res_gdt.c
+===================================================================
+--- e2fsprogs.orig/lib/ext2fs/res_gdt.c
++++ e2fsprogs/lib/ext2fs/res_gdt.c
+@@ -75,7 +75,7 @@ errcode_t ext2fs_create_resize_inode(ext
+ 
+ 	retval = ext2fs_get_array(2, fs->blocksize, &dindir_buf);
+ 	if (retval)
+-		goto out_free;
++		return retval;
+ 	gdt_buf = (__u32 *)((char *)dindir_buf + fs->blocksize);
+ 
+ 	retval = ext2fs_read_inode(fs, EXT2_RESIZE_INO, &inode);
 Index: e2fsprogs/lib/ext2fs/unix_io.c
 ===================================================================
 --- e2fsprogs.orig/lib/ext2fs/unix_io.c
@@ -349,6 +368,19 @@ Index: e2fsprogs/misc/e2undo.c
  
  	tdb_file = argv[optind];
  	device_name = argv[optind+1];
+Index: e2fsprogs/misc/mke2fs.c
+===================================================================
+--- e2fsprogs.orig/misc/mke2fs.c
++++ e2fsprogs/misc/mke2fs.c
+@@ -2014,7 +2014,7 @@ static int mke2fs_discard_device(ext2_fi
+ 		if (cur + count > blocks)
+ 			count = blocks - cur;
+ 
+-		retval = io_channel_discard(fs->io, cur, count, fs->blocksize);
++		retval = io_channel_discard(fs->io, cur, count);
+ 		if (cur == 0) {
+ 			/* If discard is unimplemented skip the progress bar */
+ 			if (retval == EXT2_ET_UNIMPLEMENTED)
 Index: e2fsprogs/misc/tune2fs.8.in
 ===================================================================
 --- e2fsprogs.orig/misc/tune2fs.8.in

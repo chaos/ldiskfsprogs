@@ -51,7 +51,7 @@ Index: e2fsprogs/lib/ext2fs/ext2_fs.h
  #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
  					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
  					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
-@@ -780,26 +781,34 @@ struct ext2_dir_entry_2 {
+@@ -780,26 +781,39 @@ struct ext2_dir_entry_2 {
  /*
   * This structure will be used for multiple mount protection. It will be
   * written into the block number saved in the s_mmp_block field in the
@@ -63,6 +63,11 @@ Index: e2fsprogs/lib/ext2fs/ext2_fs.h
 + * superblock. Programs that check MMP should assume that if SEQ_FSCK
 + * (or any unknown code above SEQ_MAX) is present then it is NOT safe
 + * to use the filesystem, regardless of how old the timestamp is.
++ *
++ * Note: Only the mmp_seq value is used to determine whether the MMP block
++ *       is being updated.  The mmp_time, mmp_nodename, and mmp_bdevname
++ *       fields can only be for informational purposes for the administrator,
++ *       due to clock skew between nodes and hostname HA service takeover.
 + */
 +#define EXT2_MMP_MAGIC     0x004D4D50U /* ASCII for MMP */
 +#define EXT2_MMP_SEQ_CLEAN 0xFF4D4D50U /* mmp_seq value for clean unmount */
@@ -1208,7 +1213,7 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/lib/ext2fs/mmp.c
-@@ -0,0 +1,420 @@
+@@ -0,0 +1,417 @@
 +/*
 + * Helper functions for multiple mount protection(MMP).
 + *
@@ -1408,7 +1413,6 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 +
 +errcode_t ext2fs_mmp_clear(ext2_filsys fs)
 +{
-+	struct mmp_struct *mmp_s = NULL;
 +	errcode_t retval = 0;
 +
 +	if (!(fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_MMP) ||
@@ -1423,7 +1427,6 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 +errcode_t ext2fs_mmp_init(ext2_filsys fs)
 +{
 +	struct ext2_super_block *sb = fs->super;
-+	struct mmp_struct *mmp_s = NULL;
 +	blk_t mmp_block;
 +	errcode_t retval;
 +
@@ -1571,7 +1574,6 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 +		goto mmp_error;
 +	}
 +
-+check_skipped:
 +	mmp_cmp->mmp_seq = EXT2_MMP_SEQ_CLEAN;
 +	retval = ext2fs_mmp_write(fs, fs->super->s_mmp_block, fs->mmp_cmp);
 +

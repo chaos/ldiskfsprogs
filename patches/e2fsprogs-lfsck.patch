@@ -726,25 +726,24 @@ Index: e2fsprogs/e2fsprogs.spec.in
  Provides: e2fsprogs-libs = %{version} ldiskfsprogs = %{version}
  Obsoletes: e4fsprogs e2fsprogs-libs < %{version}
  %endif
-@@ -71,8 +75,8 @@ SMP systems.
- %setup
+@@ -72,7 +76,8 @@ SMP systems.
  
  %build
--%configure --enable-elf-shlibs --enable-nls \
+ %configure --enable-elf-shlibs --enable-nls --disable-defrag \
 -	%{?extra_config_flags:%extra_config_flags}
-+%configure --enable-elf-shlibs --enable-nls --with-lustre=@LUSTRE@ \
-+	%{?extra_config_flags:%extra_config_flags} @LFSCK_CMT@ --enable-lfsck
++	%{?extra_config_flags:%extra_config_flags} \
++	--with-lustre=@LUSTRE@ @LFSCK_CMT@ --enable-lfsck
  make
  make check
  
-@@ -145,6 +149,7 @@ exit 0
+@@ -142,6 +146,7 @@ exit 0
+ %{_root_sbindir}/resize2fs
+ %{_root_sbindir}/tune2fs
+ %{_sbindir}/filefrag
++@LFSCK_CMT@%{_sbindir}/lfsck
  %{_sbindir}/mklost+found
  %{_sbindir}/e2freefrag
- %{_sbindir}/e4defrag
-+@LFSCK_CMT@%{_sbindir}/lfsck
  
- %{_root_libdir}/libblkid.so.*
- %{_root_libdir}/libcom_err.so.*
 @@ -170,6 +175,7 @@ exit 0
  %{_mandir}/man8/debugfs.8*
  %{_mandir}/man8/dumpe2fs.8*
@@ -840,7 +839,7 @@ Index: e2fsprogs/e2fsck/lfsck.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2fsck/lfsck.c
-@@ -0,0 +1,2088 @@
+@@ -0,0 +1,2096 @@
 +/* -*- mode: c; c-basic-offset: 8; -*-
 + * vim:shiftwidth=8:tabstop=8:
 + *
@@ -2358,8 +2357,8 @@ Index: e2fsprogs/e2fsck/lfsck.c
 +				  progname, path, strerror(errno));
 +			continue;
 +		}
-+		VERBOSE(3, "clearning locks in %s\n", path);
-+		write(fd, "clear", 6);
++		VERBOSE(3, "clearing locks in %s\n", path);
++		rc = write(fd, "clear", 6);
 +		close(fd);
 +	}
 +
@@ -2371,9 +2370,16 @@ Index: e2fsprogs/e2fsck/lfsck.c
 + * the client if it tries to attach two inodes to the same object */
 +static void lfsck_drop_caches(void)
 +{
++	int fd, rc;
++
 +	sync();
 +	llapi_cancel_osc_locks(mnt_path);
-+	system("echo 3 > /proc/sys/vm/drop_caches");
++	fd = open("/proc/sys/vm/drop_caches", O_WRONLY);
++	if (fd < 0)
++		return;
++	VERBOSE(3, "flushing vm cache\n");
++	rc = write(fd, "3", 2);
++	close(fd);
 +}
 +
 +/* Duplicate an object that is referenced by multiple files and point one
@@ -2535,7 +2541,8 @@ Index: e2fsprogs/e2fsck/lfsck.c
 +
 +	snprintf(tmp, sizeof(tmp) - 1, "rm -rvf '%s'", dupedir);
 +	VERBOSE(1, "%s\n", tmp);
-+	system(tmp);
++	if (system(tmp) == -1)
++		VERBOSE(1, "%s failed", tmp);
 +
 +	log_write("lfsck: pass4 finished\n");
 +
@@ -2933,7 +2940,7 @@ Index: e2fsprogs/lib/ext2fs/lfsck.h
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/lib/ext2fs/lfsck.h
-@@ -0,0 +1,322 @@
+@@ -0,0 +1,323 @@
 +#undef PACKAGE
 +#undef VERSION
 +#ifndef LFSCK_H
@@ -3226,7 +3233,7 @@ Index: e2fsprogs/lib/ext2fs/lfsck.h
 +int lfsck_get_fid(ext2_filsys fs, ino_t ino, struct lu_fid *fid);
 +int lfsck_is_dirfid_root(const struct lu_fid *dirfid);
 +int lfsck_fidcmp(const struct lu_fid *fid1, const struct lu_fid *fid2);
-+#endif /* FSCK_ON */
++#endif /* FSCK_OK */
 +
 +#define MDS_START_DIRENT_TABLE sizeof(struct lfsck_mds_hdr)
 +
@@ -3249,7 +3256,8 @@ Index: e2fsprogs/lib/ext2fs/lfsck.h
 +#define OST_START_OFFSET  sizeof(struct lfsck_ost_hdr)
 +
 +#else /* !ENABLE_LFSCK */
-+#define e2fsck_lfsck_found_ea(ctx, ino, inode, entry, value) (0)
++#define e2fsck_lfsck_find_ea(ctx, inode, entry, value, lmm, lma) (0)
++#define e2fsck_lfsck_save_ea(ctx, ino, generation, lmm, lma) do {} while(0)
 +#define e2fsck_lfsck_flush_ea(ctx) (0)
 +#define e2fsck_lfsck_cleanupdb(ctx) (0)
 +#define e2fsck_lfsck_remove_pending(ctx, block_buf) (0)
