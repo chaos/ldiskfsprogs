@@ -15,6 +15,7 @@ e2fsprogs-lazy_journal_init.patch
 e2fsprogs-size_high.patch
 e2fsprogs-tests-f_many_subdirs.patch
 e2fsprogs-extents.patch
+e2fsprogs-tests-f_extents_symlink.patch
 e2fsprogs-tests-f_bad_ea_value.patch
 e2fsprogs-tests-f_extents_bad_blk.patch
 e2fsprogs-tests-f_extents_ee_block.patch
