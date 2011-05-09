@@ -224,7 +224,7 @@ Index: e2fsprogs/misc/filefrag.c
  
 -static int filefrag_fiemap(int fd, int blk_shift, int *num_extents)
 +static int filefrag_fiemap(int fd, int blk_shift, int *num_extents,
-+				struct mystat *fileinfo)
++			    struct mystat *fileinfo)
  {
  	char buf[4096] = "";
  	struct fiemap *fiemap = (struct fiemap *)buf;
@@ -237,7 +237,8 @@ Index: e2fsprogs/misc/filefrag.c
  	unsigned int i;
  	static int fiemap_incompat_printed;
  	int fiemap_header_printed = 0;
- 	int tot_extents = 1, n = 0;
+-	int tot_extents = 1, n = 0;
++	int tot_extents = 0, n = 0;
 +	int previous_device = 0;
  	int last = 0;
  	int rc;
@@ -265,7 +266,7 @@ Index: e2fsprogs/misc/filefrag.c
  	do {
  		fiemap->fm_length = ~0ULL;
  		fiemap->fm_flags = flags;
-@@ -199,14 +231,16 @@ static int filefrag_fiemap(int fd, int b
+@@ -199,48 +231,60 @@ static int filefrag_fiemap(int fd, int b
  				printf("FIEMAP failed with unsupported "
  				       "flags %x\n", fiemap->fm_flags);
  				fiemap_incompat_printed = 1;
@@ -277,16 +278,28 @@ Index: e2fsprogs/misc/filefrag.c
  			return rc;
  		}
  
- 		if (verbose && !fiemap_header_printed) {
+-		if (verbose && !fiemap_header_printed) {
 -			printf(" ext %*s %*s %*s length flags\n", logical_width,
 -			       "logical", physical_width, "physical",
 -			       physical_width, "expected");
-+			print_extent_header();
- 			fiemap_header_printed = 1;
+-			fiemap_header_printed = 1;
+-		}
+-
+-		if (!verbose) {
++		/* If no extents are returned, then no more ioctls are needed */
++		if (!verbose || fiemap->fm_mapped_extents == 0) {
+ 			*num_extents = fiemap->fm_mapped_extents;
+-			goto out;
++			break;
  		}
  
-@@ -220,27 +254,40 @@ static int filefrag_fiemap(int fd, int b
- 			break;
+-		/* If 0 extents are returned, then more ioctls are not needed */
+-		if (fiemap->fm_mapped_extents == 0)
+-			break;
++		if (verbose && !fiemap_header_printed) {
++			print_extent_header();
++			fiemap_header_printed = 1;
++		}
  
  		for (i = 0; i < fiemap->fm_mapped_extents; i++) {
 -			__u64 phy_blk, logical_blk;
@@ -303,7 +316,7 @@ Index: e2fsprogs/misc/filefrag.c
 +				previous_device = fm_ext[i].fe_device;
  
 -			if (logical_blk && phy_blk != last_blk + 1)
-+			if (logical && physical != next_physical)
++			if (physical != next_physical)
  				tot_extents++;
  			else
 -				last_blk = 0;
@@ -337,7 +350,7 @@ Index: e2fsprogs/misc/filefrag.c
  	} while (last == 0);
  
  	*num_extents = tot_extents;
-@@ -250,24 +297,88 @@ out:
+@@ -250,24 +294,89 @@ out:
  
  #define EXT2_DIRECT	12
  
@@ -355,6 +368,7 @@ Index: e2fsprogs/misc/filefrag.c
 +	if (force_extent) {
 +		memset(&fm_ext, 0, sizeof(fm_ext));
 +		fm_ext.fe_device = fileinfo->st_dev;
++		fm_ext.fe_flags = FIEMAP_EXTENT_MERGED;
 +	}
 +
 +	for (i = 0, logical = 0, *num_extents = 0, count = last_block = 0;
@@ -438,7 +452,7 @@ Index: e2fsprogs/misc/filefrag.c
  
  #ifdef HAVE_OPEN64
  	fd = open64(filename, O_RDONLY);
-@@ -291,89 +402,91 @@ static void frag_report(const char *file
+@@ -291,89 +399,91 @@ static void frag_report(const char *file
  		perror("stat");
  		return;
  	}
