@@ -43,7 +43,7 @@ Index: e2fsprogs/e2fsck/e2fsck.h
 +	(!((ctx)->flags & E2F_FLAG_TIME_INSANE) &&	\
 +	 (xtime) > (ctx)->now + (margin))
 +#define EXT4_XTIME_ANCIENT(ctx, sb, xtime, margin)	\
-+	((xtime) < (sb)->s_mkfs_time - (margin))
++	((sb)->s_mkfs_time > (margin) && (xtime) < (sb)->s_mkfs_time - (margin))
 +
 +#define BADNESS_NORMAL 		1
 +#define BADNESS_HIGH		2

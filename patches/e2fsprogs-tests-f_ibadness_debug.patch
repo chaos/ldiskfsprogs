@@ -1,0 +1,67 @@
+Test to debug inconsistencies when running the f_messy_inode test
+after e2fsprogs-ibadness-counter.patch is applied.  Any new errors
+found in this inode will cause a different badness value to be
+printed, so always print the locations of the ibadness increments.
+
+Add debugging to test_script.in so it prints the ".failed" file
+after a test failure, so that failures are easier to debug.
+
+Signed-off-by: Andreas Dilger <adilger@whamcloud.com>
+Index: e2fsprogs/tests/f_messy_inode/expect.1
+===================================================================
+--- e2fsprogs.orig/tests/f_messy_inode/expect.1
++++ e2fsprogs/tests/f_messy_inode/expect.1
+@@ -1,19 +1,31 @@
+ Filesystem did not have a UUID; generating one.
+ 
+ Pass 1: Checking inodes, blocks, and sizes
++check_ext_attr:: increase inode 14 badness 0 to 1
++process_block:: increase inode 14 badness 1 to 2
+ Inode 14 has illegal block(s).  Clear? yes
+ 
+ Illegal block #2 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 2 to 3
+ Illegal block #3 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 3 to 4
+ Illegal block #4 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 4 to 5
+ Illegal block #5 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 5 to 6
+ Illegal block #6 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 6 to 7
+ Illegal block #7 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 7 to 8
+ Illegal block #8 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 8 to 9
+ Illegal block #9 (4294901760) in inode 14.  CLEARED.
++process_block:: increase inode 14 badness 9 to 10
+ Illegal block #10 (4294901760) in inode 14.  CLEARED.
++check_blocks:: increase inode 14 badness 10 to 11
+ Inode 14, i_size is 18446462598732849291, should be 2048.  Fix? yes
+ 
++check_blocks:: increase inode 14 badness 11 to 12
+ Inode 14, i_blocks is 18, should be 4.  Fix? yes
+ 
+ Pass 2: Checking directory structure
+Index: e2fsprogs/tests/f_messy_inode/script
+===================================================================
+--- /dev/null
++++ e2fsprogs/tests/f_messy_inode/script
+@@ -0,0 +1,5 @@
++FSCK_OPT="-fy -d"
++OUT1=$test_name.1.log
++AFTER_CMD="sed -i -e 's/:[0-9]\{4\}:/::/' $OUT1"
++
++. $cmd_dir/run_e2fsck
+Index: e2fsprogs/tests/test_script.in
+===================================================================
+--- e2fsprogs.orig/tests/test_script.in
++++ e2fsprogs/tests/test_script.in
+@@ -69,6 +69,7 @@ do
+ 			echo "Missing test script!"
+ 		fi
+ 	fi
++	[ -f $test_name.failed ] && diff -u $test_name.{1,2}.log
+ done
+ 
+ num_ok=`ls *.ok 2>/dev/null | wc -l`

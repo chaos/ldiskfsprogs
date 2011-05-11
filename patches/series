@@ -55,6 +55,7 @@ e2fsprogs-expand-extra-isize.patch
 e2fsprogs-tests-f_expisize.patch
 e2fsprogs-tests-f_expisize_ea_del.patch
 e2fsprogs-ibadness-counter.patch
+e2fsprogs-tests-f_ibadness_debug.patch
 e2fsprogs-tests-f_ibadness.patch
 e2fsprogs-tests-f_ibadness_bad_extents.patch
 e2fsprogs-tests-f_random_corruption.patch
