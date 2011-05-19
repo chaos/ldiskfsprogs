@@ -195,7 +195,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  				entry_size = ext2fs_attr_get_next_attr(entry,
  							index, name, len, 1);
  				in_inode = 0;
-@@ -1657,6 +1780,7 @@ static int check_ext_attr(e2fsck_t ctx, 
+@@ -1654,6 +1777,7 @@ static int check_ext_attr(e2fsck_t ctx, 
  	struct ext2_ext_attr_entry *entry;
  	int		count;
  	region_t	region = 0;
@@ -203,7 +203,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  
  	blk = ext2fs_file_acl_block(inode);
  	if (blk == 0)
-@@ -1778,19 +1902,27 @@ static int check_ext_attr(e2fsck_t ctx, 
+@@ -1775,19 +1899,27 @@ static int check_ext_attr(e2fsck_t ctx, 
  				goto clear_extattr;
  			break;
  		}
@@ -244,7 +244,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  				goto clear_extattr;
  		}
  
-@@ -2998,18 +3130,6 @@ static errcode_t e2fsck_get_alloc_block(
+@@ -2996,18 +3128,6 @@ static errcode_t e2fsck_get_alloc_block(
  	return (0);
  }
  
@@ -309,7 +309,7 @@ Index: e2fsprogs/e2fsck/problem.c
 ===================================================================
 --- e2fsprogs.orig/e2fsck/problem.c
 +++ e2fsprogs/e2fsck/problem.c
-@@ -969,6 +969,27 @@ static struct e2fsck_problem problem_tab
+@@ -968,6 +968,27 @@ static struct e2fsck_problem problem_tab
  	     "without deletion of an EA.\n"),
  	  PROMPT_FIX, 0 },
  
@@ -323,7 +323,7 @@ Index: e2fsprogs/e2fsck/problem.c
 +	  N_("@n backpointer from @a @i %N to parent @i %i.\n"),
 +	  PROMPT_CLEAR, PR_PREEN_OK },
 +
-+	/* Inode has invalid extended attribute. EA inode missing 
++	/* Inode has invalid extended attribute. EA inode missing
 +	 * EA_INODE flag. */
 +	{ PR_1_ATTR_NO_EA_INODE_FL,
 +	  N_("@i %i has @n @a. EA @i %N missing EA_INODE flag.\n"),
@@ -366,9 +366,9 @@ Index: e2fsprogs/lib/e2p/feature.c
 --- e2fsprogs.orig/lib/e2p/feature.c
 +++ e2fsprogs/lib/e2p/feature.c
 @@ -76,6 +76,8 @@ static struct feature feature_list[] = {
- 			"flex_bg"},
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_MMP,
  			"mmp" },
+ 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_FLEX_BG,
+ 			"flex_bg"},
 +	{	E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_EA_INODE,
 +			"large_xattr" },
  	{	0, 0, 0 },
