@@ -10,5 +10,5 @@ Index: e2fsprogs/version.h
  
 -#define E2FSPROGS_VERSION "1.41.14"
 -#define E2FSPROGS_DATE "22-Dec-2010"
-+#define E2FSPROGS_VERSION "1.41.90.wc2"
-+#define E2FSPROGS_DATE "14-May-2011"
++#define E2FSPROGS_VERSION "1.41.90.wc3"
++#define E2FSPROGS_DATE "28-May-2011"

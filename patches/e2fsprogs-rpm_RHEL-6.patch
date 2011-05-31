@@ -2,7 +2,7 @@ Index: e2fsprogs/e2fsprogs-RHEL-6.spec.in
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2fsprogs-RHEL-6.spec.in
-@@ -0,0 +1,785 @@
+@@ -0,0 +1,787 @@
 +%define	_root_sbindir	/sbin
 +%define	_root_libdir	/%{_lib}
 +
@@ -162,7 +162,9 @@ Index: e2fsprogs/e2fsprogs-RHEL-6.spec.in
 +%build
 +%configure --enable-elf-shlibs --enable-nls --disable-uuidd --disable-fsck \
 +	   --disable-e2initrd-helper --disable-libblkid --disable-libuuid \
-+	   --disable-defrag --with-lustre=@LUSTRE@ @LFSCK_CMT@ --enable-lfsck
++	   --disable-defrag \
++	   @WITH_LUSTRE@ @ENABLE_LFSCK@ \
++	   %{?extra_config_flags:%extra_config_flags}
 +make %{?_smp_mflags}
 +
 +%install
@@ -792,7 +794,7 @@ Index: e2fsprogs/configure.in
 ===================================================================
 --- e2fsprogs.orig/configure.in
 +++ e2fsprogs/configure.in
-@@ -1233,6 +1233,7 @@ test -d lib || mkdir lib
+@@ -1234,6 +1234,7 @@ test -d include || mkdir include
  test -d include/linux || mkdir include/linux
  test -d include/asm || mkdir include/asm
  for i in MCONFIG Makefile e2fsprogs.spec \
@@ -804,7 +806,7 @@ Index: e2fsprogs/contrib/build-rpm
 ===================================================================
 --- e2fsprogs.orig/contrib/build-rpm
 +++ e2fsprogs/contrib/build-rpm
-@@ -34,11 +34,46 @@ EXCLUDE="--exclude .hg* --exclude .pc*"
+@@ -34,11 +34,46 @@ EXCLUDE="--exclude .hg* --exclude .pc*
  
  [ "`rpmbuild --version 2> /dev/null`" ] && RPM=rpmbuild || RPM=rpm
  
@@ -856,7 +858,7 @@ Index: e2fsprogs/lib/ext2fs/ext2_types-wrapper.h
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/lib/ext2fs/ext2_types-wrapper.h
-@@ -0,0 +1,28 @@ EXCLUDE="--exclude .hg* --exclude .pc*"
+@@ -0,0 +1,28 @@
 +/* This file is here to prevent a file conflict on multiarch systems. A
 + * conflict will occur because ext2_types.h has arch-specific definitions.
 + *
@@ -887,9 +889,9 @@ Index: e2fsprogs/lib/ext2fs/ext2_types-wrapper.h
 +#endif
 Index: e2fsprogs/lib/ext2fs/Makefile.in
 ===================================================================
---- /dev/null
+--- e2fsprogs.orig/lib/ext2fs/Makefile.in
 +++ e2fsprogs/lib/ext2fs/Makefile.in
-@@ -159,7 +159,7 @@
+@@ -162,7 +162,7 @@ SRCS= ext2_err.c \
  
  HFILES= bitops.h ext2fs.h ext2_io.h ext2_fs.h ext2_ext_attr.h ext3_extents.h \
  	tdb.h

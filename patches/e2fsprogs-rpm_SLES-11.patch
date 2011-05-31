@@ -180,10 +180,10 @@ Index: e2fsprogs/e2fsprogs-SUSE_LINUX-11.spec.in
 +  --disable-libuuid \
 +  --disable-uuidd \
 +  --disable-fsck \
-+  %{?extra_config_flags:%extra_config_flags} CFLAGS="$RPM_OPT_FLAGS" \
 +  --disable-defrag \
-+  --with-lustre=@LUSTRE@ \
-+  @LFSCK_CMT@ --enable-lfsck
++  @WITH_LUSTRE@ \
++  @ENABLE_LFSCK@ \
++  %{?extra_config_flags:%extra_config_flags} CFLAGS="$RPM_OPT_FLAGS"
 +make V=1
 +
 +%install
@@ -1120,7 +1120,7 @@ Index: e2fsprogs/configure.in
 ===================================================================
 --- e2fsprogs.orig/configure.in
 +++ e2fsprogs/configure.in
-@@ -1234,6 +1234,7 @@ test -d lib || mkdir lib
+@@ -1235,6 +1243,7 @@ test -d include/linux || mkdir include/l
  test -d include/asm || mkdir include/asm
  for i in MCONFIG Makefile e2fsprogs.spec \
  	e2fsprogs-RHEL-6.spec \
@@ -1132,7 +1132,7 @@ Index: e2fsprogs/contrib/build-rpm
 ===================================================================
 --- e2fsprogs.orig/contrib/build-rpm
 +++ e2fsprogs/contrib/build-rpm
-@@ -43,6 +43,9 @@ EXCLUDE="--exclude .hg* --exclude .pc*"
+@@ -43,6 +43,9 @@ if [ -z "$DISTRO" ]; then
      if grep "Fedora " /etc/issue; then
          DISTRO="Fedora"
      fi
@@ -1142,7 +1142,7 @@ Index: e2fsprogs/contrib/build-rpm
  fi
  if [ -z "$DISTRO" ]; then
      echo "Could not determine the distribution.  Please install the lsb_release binary"
-@@ -54,6 +59,9 @@ EXCLUDE="--exclude .hg* --exclude .pc*"
+@@ -54,6 +57,9 @@ if [ -z "$RELEASE" ]; then
          Fedora)
              RELEASE=$(grep Fedora /etc/issue | sed -e 's/Fedora release //' -e 's/ .*//')
          ;;
