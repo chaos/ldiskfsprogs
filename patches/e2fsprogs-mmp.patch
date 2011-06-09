@@ -817,7 +817,7 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 +
 +	/* I was tempted to make this use O_DIRECT and the mmp_fd, but
 +	 * this caused no end of grief, while leaving it as-is works. */
-+	retval = io_channel_write_blk(fs->io, mmp_blk, -fs->blocksize, buf);
++	retval = io_channel_write_blk64(fs->io, mmp_blk, -fs->blocksize, buf);
 +
 +#ifdef EXT2FS_ENABLE_SWAPFS
 +	if (fs->super->s_magic == ext2fs_swab16(EXT2_SUPER_MAGIC))
@@ -1425,7 +1425,7 @@ Index: e2fsprogs/misc/tune2fs.c
  	}
  
  	if (FEATURE_OFF(E2P_FEATURE_COMPAT, EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
-@@ -390,22 +400,89 @@ static void update_feature_set(ext2_fils
+@@ -390,21 +400,88 @@ static void update_feature_set(ext2_fils
  				"cleared when the filesystem is\n"
  				"unmounted or mounted "
  				"read-only.\n"), stderr);
@@ -1449,8 +1449,8 @@ Index: e2fsprogs/misc/tune2fs.c
 -			remove_journal_device(fs);
 +			if (remove_journal_device(fs))
 +				return 1;
- 		}
- 	}
++		}
++	}
 +	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_MMP)) {
 +		int error;
 +
@@ -1507,7 +1507,7 @@ Index: e2fsprogs/misc/tune2fs.c
 +				com_err (program_name, error,
 +					 _("while reading MMP block."));
 +			goto mmp_error;
-+		}
+ 		}
 +
 +		/* We need to force out the group descriptors as well */
 +		fs->flags &= ~EXT2_FLAG_SUPER_ONLY;
@@ -1515,10 +1515,9 @@ Index: e2fsprogs/misc/tune2fs.c
 +mmp_error:
 +		sb->s_mmp_block = 0;
 +		sb->s_mmp_update_interval = 0;
-+	}
+ 	}
  
  	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
- 		/*
 @@ -497,12 +574,14 @@ static void update_feature_set(ext2_fils
  	    (old_features[E2P_FEATURE_INCOMPAT] != sb->s_feature_incompat) ||
  	    (old_features[E2P_FEATURE_RO_INCOMPAT] != sb->s_feature_ro_compat))
@@ -1649,12 +1648,14 @@ Index: e2fsprogs/misc/tune2fs.c
  
  #ifdef ENABLE_NLS
  	setlocale(LC_MESSAGES, "");
-@@ -1619,14 +1724,26 @@ int main(int argc, char **argv)
+@@ -1619,14 +1724,28 @@ int main(int argc, char **argv)
  		io_ptr = unix_io_manager;
  
  retry_open:
 +	if ((open_flag & EXT2_FLAG_RW) == 0 || f_flag)
 +		 open_flag |= EXT2_FLAG_SKIP_MMP;
++
++        open_flag |= EXT2_FLAG_64BITS;
 +
  	retval = ext2fs_open2(device_name, io_options, open_flag,
  			      0, 0, io_ptr, &fs);
@@ -1680,7 +1681,7 @@ Index: e2fsprogs/misc/tune2fs.c
  		exit(1);
  	}
  
-@@ -1639,12 +1756,14 @@ retry_open:
+@@ -1639,12 +1758,14 @@ retry_open:
  		if (new_inode_size == EXT2_INODE_SIZE(fs->super)) {
  			fprintf(stderr, _("The inode size is already %lu\n"),
  				new_inode_size);
@@ -1697,7 +1698,7 @@ Index: e2fsprogs/misc/tune2fs.c
  		}
  
  		/*
-@@ -1653,8 +1772,10 @@ retry_open:
+@@ -1653,8 +1774,10 @@ retry_open:
  		 */
  		io_ptr_orig = io_ptr;
  		retval = tune2fs_setup_tdb(device_name, &io_ptr);
@@ -1710,7 +1711,7 @@ Index: e2fsprogs/misc/tune2fs.c
  		if (io_ptr != io_ptr_orig) {
  			ext2fs_close(fs);
  			goto retry_open;
-@@ -1669,7 +1790,7 @@ retry_open:
+@@ -1669,7 +1792,7 @@ retry_open:
  		printf("%.*s\n", (int) sizeof(sb->s_volume_name),
  		       sb->s_volume_name);
  		remove_error_table(&et_ext2_error_table);
@@ -1719,7 +1720,7 @@ Index: e2fsprogs/misc/tune2fs.c
  	}
  
  	retval = ext2fs_check_if_mounted(device_name, &mount_flags);
-@@ -1677,7 +1798,8 @@ retry_open:
+@@ -1677,7 +1800,8 @@ retry_open:
  		com_err("ext2fs_check_if_mount", retval,
  			_("while determining whether %s is mounted."),
  			device_name);
@@ -1729,7 +1730,7 @@ Index: e2fsprogs/misc/tune2fs.c
  	}
  	/* Normally we only need to write out the superblock */
  	fs->flags |= EXT2_FLAG_SUPER_ONLY;
-@@ -1716,12 +1838,19 @@ retry_open:
+@@ -1716,12 +1840,19 @@ retry_open:
  		printf (_("Setting reserved blocks percentage to %g%% (%llu blocks)\n"),
  			reserved_ratio, ext2fs_r_blocks_count(sb));
  	}
@@ -1750,7 +1751,7 @@ Index: e2fsprogs/misc/tune2fs.c
  		}
  		ext2fs_r_blocks_count_set(sb, reserved_blocks);
  		ext2fs_mark_super_dirty(fs);
-@@ -1745,7 +1874,8 @@ retry_open:
+@@ -1745,7 +1876,8 @@ retry_open:
  	if (s_flag == 0) {
  		fputs(_("\nClearing the sparse superflag not supported.\n"),
  		      stderr);
@@ -1760,7 +1761,7 @@ Index: e2fsprogs/misc/tune2fs.c
  	}
  	if (T_flag) {
  		sb->s_lastcheck = last_check_time;
-@@ -1773,14 +1903,36 @@ retry_open:
+@@ -1773,14 +1905,36 @@ retry_open:
  			sizeof(sb->s_last_mounted));
  		ext2fs_mark_super_dirty(fs);
  	}
@@ -1805,7 +1806,7 @@ Index: e2fsprogs/misc/tune2fs.c
  
  	if (U_flag) {
  		int set_csum = 0;
-@@ -1808,7 +1960,8 @@ retry_open:
+@@ -1808,7 +1962,8 @@ retry_open:
  			uuid_generate(sb->s_uuid);
  		} else if (uuid_parse(new_UUID, sb->s_uuid)) {
  			com_err(program_name, 0, _("Invalid UUID format\n"));
@@ -1815,7 +1816,7 @@ Index: e2fsprogs/misc/tune2fs.c
  		}
  		if (set_csum) {
  			for (i = 0; i < fs->group_desc_count; i++)
-@@ -1822,7 +1975,8 @@ retry_open:
+@@ -1822,7 +1977,8 @@ retry_open:
  			fputs(_("The inode size may only be "
  				"changed when the filesystem is "
  				"unmounted.\n"), stderr);
@@ -1825,7 +1826,7 @@ Index: e2fsprogs/misc/tune2fs.c
  		}
  		if (fs->super->s_feature_incompat &
  		    EXT4_FEATURE_INCOMPAT_FLEX_BG) {
-@@ -1868,5 +2022,12 @@ retry_open:
+@@ -1868,5 +2024,12 @@ retry_open:
  
  	free(device_name);
  	remove_error_table(&et_ext2_error_table);
