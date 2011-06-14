@@ -29,7 +29,7 @@ Index: e2fsprogs/configure.in
 ===================================================================
 --- e2fsprogs.orig/configure.in
 +++ e2fsprogs/configure.in
-@@ -212,6 +212,54 @@ Q=@
+@@ -212,6 +212,62 @@ Q=@
  AC_SUBST(E)
  AC_SUBST(Q)
  dnl
@@ -41,30 +41,38 @@ Index: e2fsprogs/configure.in
 +then
 +	LFSCK_CMT=#
 +	LFSCK_MAN=.\"
++	ENABLE_LFSCK="--disable-lfsck"
 +	echo "Disabling Lustre lfsck support"
 +else
 +	LFSCK_CMT=
 +	LFSCK_MAN=
-+	AC_DEFINE(ENABLE_LFSCK)
++	ENABLE_LFSCK="--enable-lfsck"
++	AC_DEFINE(HAVE_LFSCK)
 +	echo "Enabling Lustre lfsck support"
 +fi
 +,
 +LFSCK_CMT=
 +LFSCK_MAN=
-+AC_DEFINE(ENABLE_LFSCK)
++ENABLE_LFSCK=
++AC_DEFINE(HAVE_LFSCK)
 +echo "Enabling Lustre lfsck support by default"
 +)
 +AC_SUBST(LFSCK_CMT)
 +AC_SUBST(LFSCK_MAN)
++AC_SUBST(ENABLE_LFSCK)
 +dnl
 +dnl set lustre include path and build lfsck
 +dnl
 +AC_ARG_WITH([lustre],
 +[  --with-lustre=LUSTRE path to Lustre sources for lfsck (default=/usr for RPM)],
-+AC_MSG_RESULT(LUSTRE is $withval)
-+LUSTRE="$withval",
-+LUSTRE="/usr")dnl
++AC_MSG_RESULT(LUSTRE is in $withval)
++	LUSTRE="$withval"
++	WITH_LUSTRE="--with-lustre=$withval",
++	LUSTRE="/usr"
++	WITH_LUSTRE=
++)dnl
 +AC_SUBST(LUSTRE)
++AC_SUBST(WITH_LUSTRE)
 +dnl
 +AS_IF([test "x$enable_lfsck" != "xno"],
 +[
@@ -73,7 +81,7 @@ Index: e2fsprogs/configure.in
 +			AC_MSG_ERROR([No lustre includes found.]))
 +	)
 +dnl	# Disable for old autoconf that doesn't check header usability.
-+dnl	# Supposed to check if lustre_idl.h is usable from userspace.
++dnl	# Supposed to check if lustre_idl.h is buildable from userspace.
 +dnl	AC_CHECK_HEADER($LUSTRE/lustre/include/lustre/lustre_idl.h,
 +dnl			AC_DEFINE(HAVE_LUSTRE_LUSTRE_IDL_H),
 +dnl		AC_CHECK_HEADER($LUSTRE/include/lustre/lustre_idl.h,
@@ -336,7 +344,7 @@ Index: e2fsprogs/e2fsck/e2fsck.c
 -	e2fsck_pass1, e2fsck_pass2, e2fsck_pass3, e2fsck_pass4,
 -	e2fsck_pass5, 0 };
 +	e2fsck_pass1, e2fsck_pass2, e2fsck_pass3, e2fsck_pass4, e2fsck_pass5,
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +	e2fsck_pass6,
 +#endif
 +	0 };
@@ -434,7 +442,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  	 * it seems like a corruption. it's very unlikely we could repair
 @@ -1005,6 +1015,12 @@ void e2fsck_pass1(e2fsck_t ctx)
  		ext2fs_mark_block_bitmap2(ctx->block_found_map,
- 					 fs->super->s_mmp_block);
+					  fs->super->s_mmp_block);
  
 +	if (!(ctx->options & E2F_OPT_READONLY) &&
 +	    (ctx->lustre_devtype & LUSTRE_TYPE) == LUSTRE_MDS) {
@@ -444,7 +452,7 @@ Index: e2fsprogs/e2fsck/pass1.c
 +
  	while (1) {
  		if (ino % EXT2_MMP_INODE_INTERVAL == 0) {
- 			errcode_t error;
+			if (e2fsck_mmp_update(fs))
 @@ -1513,6 +1529,9 @@ void e2fsck_pass1(e2fsck_t ctx)
  		}
  		e2fsck_pass1_dupblocks(ctx, block_buf);
@@ -513,7 +521,7 @@ Index: e2fsprogs/e2fsck/unix.c
 +#include "ext2fs/lfsck.h"
 +
 +static struct option long_options[] = {
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +	{ "mdsdb", 1, NULL, 1 },
 +	{ "mdtdb", 1, NULL, 1 },
 +	{ "ostdb", 1, NULL, 2 },
@@ -528,7 +536,7 @@ Index: e2fsprogs/e2fsck/unix.c
  			     fs->super->s_checkinterval*2))
  			reason = 0;
  	}
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +	if (ctx->lustre_devtype & LUSTRE_TYPE) {
 +		if (!reason || ctx->options & E2F_OPT_READONLY)
 +			ctx->lustre_devtype |= LUSTRE_ONLY;
@@ -544,14 +552,14 @@ Index: e2fsprogs/e2fsck/unix.c
  skip:
  	ext2fs_close(fs);
  	ctx->fs = NULL;
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +	if (ctx->lustre_mdsdb)
 +		free(ctx->lustre_mdsdb);
 +	if (ctx->lustre_ostdb)
 +		free(ctx->lustre_ostdb);
 +	if (ctx->lfsck_oinfo)
 +		e2fsck_lfsck_cleanupdb(ctx);
-+#endif /* ENABLE_LFSCK */
++#endif /* HAVE_LFSCK */
 +
  	e2fsck_free_context(ctx);
  	exit(FSCK_OK);
@@ -575,7 +583,7 @@ Index: e2fsprogs/e2fsck/unix.c
 +				"panyrcC:B:dE:fvtFVM:b:I:j:P:l:L:N:SsDk",
 +				long_options, &option_index)) != EOF)
  		switch (c) {
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +		case 1: {
 +			char *dbpath, *tmp;
 +
@@ -637,7 +645,7 @@ Index: e2fsprogs/e2fsck/unix.c
 +			free(tmp);
 +			break;
 +		}
-+#endif /* ENABLE_LFSCK */
++#endif /* HAVE_LFSCK */
  		case 'C':
  			ctx->progress = e2fsck_update_progress;
  			res = sscanf(optarg, "%d", &ctx->progress_fd);
@@ -653,7 +661,7 @@ Index: e2fsprogs/e2fsck/unix.c
  		default:
  			usage(ctx);
  		}
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +	if (ctx->lustre_devtype) {
 +		if ((ctx->lustre_devtype != LUSTRE_MDS) &&
 +		    ctx->lustre_devtype != (LUSTRE_MDS | LUSTRE_OST)) {
@@ -662,7 +670,7 @@ Index: e2fsprogs/e2fsck/unix.c
 +			usage(ctx);
 +		}
 +	}
-+#endif /* ENABLE_LFSCK */
++#endif /* HAVE_LFSCK */
  	if (show_version_only)
  		return 0;
  	if (optind != argc - 1)
@@ -670,14 +678,14 @@ Index: e2fsprogs/e2fsck/unix.c
  	ext2fs_close(fs);
  	ctx->fs = NULL;
  	free(ctx->journal_name);
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +	if (ctx->lfsck_oinfo)
 +		e2fsck_lfsck_cleanupdb(ctx);
 +	if (ctx->lustre_mdsdb)
 +		free(ctx->lustre_mdsdb);
 +	if (ctx->lustre_ostdb)
 +		free(ctx->lustre_ostdb);
-+#endif /* ENABLE_LFSCK */
++#endif /* HAVE_LFSCK */
  
  	e2fsck_free_context(ctx);
  	remove_error_table(&et_ext2_error_table);
@@ -731,8 +739,8 @@ Index: e2fsprogs/e2fsprogs.spec.in
  %build
  %configure --enable-elf-shlibs --enable-nls --disable-defrag \
 -	%{?extra_config_flags:%extra_config_flags}
-+	%{?extra_config_flags:%extra_config_flags} \
-+	--with-lustre=@LUSTRE@ @LFSCK_CMT@ --enable-lfsck
++	@WITH_LUSTRE@ @ENABLE_LFSCK@ \
++	%{?extra_config_flags:%extra_config_flags}
  make
  make check
  
@@ -2948,7 +2956,7 @@ Index: e2fsprogs/lib/ext2fs/lfsck.h
 +#ifndef LFSCK_H
 +#define LFSCK_H
 +
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +/* These are unfortunately needed for lustre_user.h to be usable */
 +#define CLASSERT(cond)		({ switch(42) { case (cond): case 0: break; } })
 +#define LASSERT(cond)		do { } while (0)
@@ -3257,22 +3265,23 @@ Index: e2fsprogs/lib/ext2fs/lfsck.h
 +
 +#define OST_START_OFFSET  sizeof(struct lfsck_ost_hdr)
 +
-+#else /* !ENABLE_LFSCK */
++#else /* !HAVE_LFSCK */
 +#define e2fsck_lfsck_find_ea(ctx, inode, entry, value, lmm, lma) (0)
 +#define e2fsck_lfsck_save_ea(ctx, ino, generation, lmm, lma) do {} while(0)
 +#define e2fsck_lfsck_flush_ea(ctx) (0)
 +#define e2fsck_lfsck_cleanupdb(ctx) (0)
 +#define e2fsck_lfsck_remove_pending(ctx, block_buf) (0)
-+#endif /* ENABLE_LFSCK */
++#endif /* HAVE_LFSCK */
 +
 +#endif /* LFSCK_H */
 Index: e2fsprogs/e2fsck/lfsck_common.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2fsck/lfsck_common.c
-@@ -0,0 +1,429 @@
+@@ -0,0 +1,430 @@
 +/*
 + * Copyright (c) 2004  Hewlett-Packard Co.
++ * Copyright (c) 2011  Whamcloud, Inc
 + */
 +/*****************************************************************************
 + * e2fsck extentions: code for gathering data from the OST & MDT filesystems
@@ -3299,7 +3308,7 @@ Index: e2fsprogs/e2fsck/lfsck_common.c
 +
 +#include "ext2fs/lfsck.h"
 +
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +char *my_dirname(char *path)
 +{
 +
@@ -3749,7 +3758,7 @@ Index: e2fsprogs/e2fsck/pass6.c
 +#include "ext2fs/ext2_fs.h"
 +#include "ext2fs/ext2fs.h"
 +
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +#include "e2fsck.h"
 +#include "ext2fs/lfsck.h"
 +#include "problem.h"
@@ -5215,4 +5224,4 @@ Index: e2fsprogs/e2fsck/pass6.c
 +
 +	return;
 +}
-+#endif /* ENABLE_LFSCK */
++#endif /* HAVE_LFSCK */

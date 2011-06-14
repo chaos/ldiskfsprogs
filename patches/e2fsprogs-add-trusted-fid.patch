@@ -6,7 +6,7 @@ Index: e2fsprogs/debugfs/debugfs.c
  			fprintf(out, "%02x ", (unsigned char)str[i]);
  }
  
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +#include "ext2fs/lfsck.h"
 +
 +static void print_fidstr(FILE *out, ext2_ino_t inode_num, void *data, int len)
@@ -33,7 +33,7 @@ Index: e2fsprogs/debugfs/debugfs.c
 +		ext2fs_le32_to_cpu(ff->ff_parent_oid), /* f_ver */ 0,
 +		ext2fs_le32_to_cpu(ff->ff_stripe));
 +}
-+#endif /* ENABLE_LFSCK */
++#endif /* HAVE_LFSCK */
 +
  static void internal_dump_inode_extra(FILE *out,
  				      const char *prefix EXT2FS_ATTR((unused)),
@@ -46,7 +46,7 @@ Index: e2fsprogs/debugfs/debugfs.c
  			dump_xattr_string(out, start + entry->e_value_offs,
  						entry->e_value_size);
  			fprintf(out, "\" (%u)\n", entry->e_value_size);
-+#ifdef ENABLE_LFSCK
++#ifdef HAVE_LFSCK
 +			/* Special decoding for Lustre fid */
 +			if ((entry->e_name_index == EXT2_ATTR_INDEX_TRUSTED ||
 +			     entry->e_name_index == EXT2_ATTR_INDEX_LUSTRE) &&
