@@ -609,14 +609,13 @@ Index: e2fsprogs/lib/ext2fs/ext2fs.h
  struct struct_ext2_filsys {
  	errcode_t			magic;
  	io_channel			io;
-@@ -249,6 +259,19 @@ struct struct_ext2_filsys {
+@@ -249,6 +259,18 @@ struct struct_ext2_filsys {
  	io_channel			image_io;
  
  	/*
 +	 * Buffers for Multiple mount protection(MMP) block.
 +	 */
 +	void *mmp_buf;
-+	void *mmp_unaligned_buf;
 +	void *mmp_cmp;
 +	int mmp_fd;
 +
@@ -680,8 +679,8 @@ Index: e2fsprogs/lib/ext2fs/freefs.c
  
 +	if (fs->mmp_buf)
 +		ext2fs_free_mem(&fs->mmp_buf);
-+	if (fs->mmp_unaligned_buf)
-+		ext2fs_free_mem(&fs->mmp_unaligned_buf);
++	if (fs->mmp_cmp)
++		ext2fs_free_mem(&fs->mmp_cmp);
 +
  	fs->magic = 0;
  
@@ -690,7 +689,7 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/lib/ext2fs/mmp.c
-@@ -0,0 +1,417 @@
+@@ -0,0 +1,413 @@
 +/*
 + * Helper functions for multiple mount protection (MMP).
 + *
@@ -732,8 +731,6 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 +#endif
 +}
 +
-+#define ptr_align(ptr, size)	(void *)(((unsigned long)(ptr) + (size) - 1) & \
-+					 ~((unsigned long)(size) - 1))
 +#ifndef O_DIRECT
 +#define O_DIRECT 0
 +#endif
@@ -756,10 +753,9 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 +
 +		if (bufsize < mmp_pagesize())
 +			bufsize = mmp_pagesize();
-+		retval = ext2fs_get_mem(bufsize * 2, &fs->mmp_unaligned_buf);
++		retval = ext2fs_get_memalign(bufsize, bufsize, &fs->mmp_cmp);
 +		if (retval)
 +			return retval;
-+		fs->mmp_cmp = ptr_align(fs->mmp_unaligned_buf, bufsize);
 +	}
 +
 +	/* ext2fs_open reserves fd0,1,2 to avoid stdio collision */
@@ -1063,9 +1059,8 @@ Index: e2fsprogs/lib/ext2fs/mmp.c
 +		ext2fs_free_mem(&fs->mmp_buf);
 +		fs->mmp_buf = NULL;
 +	}
-+	if (fs->mmp_unaligned_buf) {
-+		ext2fs_free_mem(&fs->mmp_unaligned_buf);
-+		fs->mmp_unaligned_buf = NULL;
++	if (fs->mmp_cmp) {
++		ext2fs_free_mem(&fs->mmp_cmp);
 +		fs->mmp_cmp = NULL;
 +	}
 +
