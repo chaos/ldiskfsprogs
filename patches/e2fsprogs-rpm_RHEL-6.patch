@@ -794,7 +794,7 @@ Index: e2fsprogs/configure.in
 ===================================================================
 --- e2fsprogs.orig/configure.in
 +++ e2fsprogs/configure.in
-@@ -1234,6 +1234,7 @@ test -d include || mkdir include
+@@ -1242,6 +1242,7 @@ test -d include || mkdir include
  test -d include/linux || mkdir include/linux
  test -d include/asm || mkdir include/asm
  for i in MCONFIG Makefile e2fsprogs.spec \
@@ -806,7 +806,7 @@ Index: e2fsprogs/contrib/build-rpm
 ===================================================================
 --- e2fsprogs.orig/contrib/build-rpm
 +++ e2fsprogs/contrib/build-rpm
-@@ -34,11 +34,46 @@ EXCLUDE="--exclude .hg* --exclude .pc*
+@@ -34,11 +34,47 @@ EXCLUDE="--exclude .hg* --exclude .pc* -
  
  [ "`rpmbuild --version 2> /dev/null`" ] && RPM=rpmbuild || RPM=rpm
  
@@ -838,6 +838,7 @@ Index: e2fsprogs/contrib/build-rpm
 +fi
 +case "$DISTRO-$RELEASE" in
 +    RedHatEnterpriseServer-6*) DISTRO=RHEL; RELEASE=6;;
++    CentOS-6*) DISTRO=RHEL; RELEASE=6;;
 +    Fedora-1[234]) DISTRO=RHEL; RELEASE=6;;	# use the same .spec for now
 +esac
 +
