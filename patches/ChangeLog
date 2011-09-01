@@ -1,5 +1,103 @@
-tbd		Whamcloud, Inc.
-	* version 1.42.0.wc1
+2011-09-01	Whamcloud, Inc.
+	* version 1.41.90.wc4
+
+Severity   : enhancement
+Description: LU-647 Update for 2.1.0 build, CentOS 6.0
+Details    : liblustreapi.h includes libcfs/posix/posix-types.h now, the
+	     libcfs include path should be added.  Use e2fsprogs-RHEL-6.spec.in
+	     for CentOS-6.
+
+---------------------------------------------------------------------------
+
+2011-05-28	Whamcloud, Inc.
+	* version 1.41.90.wc3
+
+Severity   : major
+Description: LU-367 Handle DB->open errors without crashing
+Details    : Remove the DB_INIT_LOCK call from the second db->open() call,
+	     since this caused errors on the newer db4.  We shouldn't need
+	     this anyway because the databases are never opened concurrently
+	     in r/w mode.  If there is an error opening the MDSDB or OSTDB,
+	     print out a consistent error message.  In lfsck_run_checks() it
+	     didn't have enough function arguments, so when the MDSDB failed
+	     to open (e.g. due to a different version of db4 installed on the
+	     MDS, OSS, or client nodes) it caused lfsck to crash afterward.
+
+Severity   : minor
+Description: LU-264 Update MMP patch based on upstream commit
+Details    : Pull back changes into the MMP patch based on feedback from
+
+Severity   : minor
+Description: LU-264 Make tune2fs 64bits capable
+Details    : Replace io_channel_write_blk() with io_channel_write_blk64() in
+	     ext2fs_mmp_write(). Add EXT2_FLAG_64BITS for tune2fs
+
+Severity   : enhancement
+Description: LU-264 Use ext2fs_get_memalign() to align memory
+Details    : Use the ext2fs_get_memalign() function that is available in newer
+	     versions of e2fsprogs instead of open-coding it for the MMP block
+	     buffer reads that use O_DIRECT.
+
+Severity   : enhancement
+Description: LU-264 Update MMP patch based on upstream commit
+Details    : Pull back changes into the MMP patch based on feedback from
+	     upstream e2fsprogs patch submission
+
+Severity   : enhancement
+Description: LU-367 Clean up Lustre configure option handling
+Details    : Cleanup up the configure option handling, so that --with-lustre
+	     and --enable-lfsck are not explicitly stored in the instantiated
+	     configure and e2fsprogs.spec files after configure generates them,
+	     unless they were also specified on the configure command-line.
+
+---------------------------------------------------------------------------
+	     
+2011-04-14	Whamcloud, Inc.
+	* version 1.41.90.wc2
+
+Severity   : major
+Description: LU-254: don't mark long extent symlinks bad
+Details    : Long symlinks with the EXT4_EXTENTS_FL set should no longer be
+	     considered as corrupt, since these are created by default with
+	     new kernels using ext4 as the filesystem type.  This has not
+	     impacted Lustre in the past because extents are only enabled on
+	     the OST, while symlinks are only created on the MDT where
+	     extents are never enabled.  However, now that distros are using
+	     ext4 as the base filesystem type, if the lustre-patched e2fsprogs
+	     RPM is installed it will incorrectly consider all such long
+	     symlinks as bad and remove them.
+
+Severity   : minor
+Description: fix filefrag output for 0-block files
+Details    : Based on a patch for upstream, fix the Lustre filefrag output to
+	     not print "1 extent" for a file that has no data blocks.  Also,
+	     do not print the "extent format" header if not running in verbose
+	     mode.
+
+Severity   : minor
+Description: LU-193 fix f_messy_inode failure due to ibadness
+Details    : The EXT4_XTIME_ANCIENT (ctime > s_mkfs_time) check was failing
+	     on i686 due to s_mkfs_time being uninitialized on the
+	     f_messy_inode test image.  On i686 this caused an underflow due
+	     to the 24h error margin for the timestamp comparison to compensate
+	     for time zone errors.  Add -d to e2fsck runtime options for the
+	     failing f_messy_inode test so that it prints when the inode
+	     badness is incremented.  The debug test output was generated on
+	     an x86_64 system and should pass on all architectures.
+	     Print failed test output at the time of failure to simplify
+	     debugging when running in an automated test harness.
+
+Severity   : enhancement
+Description: LU-113: add .spec file for RHEL6 split packages
+Details    : Add .spec file from RHEL6 to handle multiple split RPM packages
+	     to avoid conflicts while installing the resulting e2fsprogs RPMs.
+	     Fix warnings that result from building on a RHEL6 system.
+	     Also resolve LU 44 build problem when --disable-lfsck is given.
+	     
+---------------------------------------------------------------------------
+	     
+2011-03-18	Whamcloud, Inc.
+	* version 1.41.90.wc1
 	     
 Severity   : enhancement
 Description: update to latest upstream e2fsprogs release
@@ -10,6 +108,7 @@ Details    : Update to upstream e2fsprogs release 1.42.  This release
 	     filesystems yet.
 
 Severity   : enhancement
+Bugzilla   : 13698
 Description: allow lfsck to run with both 1.x and 2.x filesystems
 Details    : adapt lfsck to use FID-based inode and object addressing,
 	     so that it can work with 2.x filesystems.  This depends
