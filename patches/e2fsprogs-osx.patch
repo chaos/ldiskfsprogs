@@ -1,6 +1,6 @@
 The BLKFLSBUF and FDFLUSH ioctls are Linux specific, and do not
 really have anything to do with __GNUC__ (which is also used on
-OS/X and Solaris).  No need to print these warnings on OS/X.
+OS/X and Solaris).  Only print these warnings on Linux systems.
 
 O_DIRECT is not defined in the OS/X headers.  Since this is only a
 performance enhancement, and not required for correct operation,
@@ -62,3 +62,84 @@ Index: e2fsprogs/lib/ext2fs/unix_io.c
  	data->flags = flags;
  
  #ifdef HAVE_OPEN64
+Index: e2fsprogs/lib/e2p/fgetflags.c
+===================================================================
+--- e2fsprogs.orig/lib/e2p/fgetflags.c
++++ e2fsprogs/lib/e2p/fgetflags.c
+@@ -89,9 +89,9 @@ int fgetflags (const char * name, unsign
+    *flags = f;
+    return (save_errno);
+ #endif
++notsupp:
+ #endif /* HAVE_EXT2_IOCTLS */
+ #endif
+-notsupp:
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ }
+Index: e2fsprogs/lib/e2p/fsetflags.c
+===================================================================
+--- e2fsprogs.orig/lib/e2p/fsetflags.c
++++ e2fsprogs/lib/e2p/fsetflags.c
+@@ -51,7 +51,6 @@
+ 
+ int fsetflags (const char * name, unsigned long flags)
+ {
+-	struct stat buf;
+ #if HAVE_CHFLAGS && !(APPLE_DARWIN && HAVE_EXT2_IOCTLS)
+ 	unsigned long bsd_flags = 0;
+ 
+@@ -72,6 +71,7 @@ int fsetflags (const char * name, unsign
+ #else
+ #if HAVE_EXT2_IOCTLS
+ 	int fd, r, f, save_errno = 0;
++	struct stat buf;
+ 
+ 	if (!lstat(name, &buf) &&
+ 	    !S_ISREG(buf.st_mode) && !S_ISDIR(buf.st_mode)) {
+@@ -93,9 +93,9 @@ int fsetflags (const char * name, unsign
+    return syscall(SYS_fsctl, name, EXT2_IOC_SETFLAGS, &f, 0);
+ #endif
+ 	return r;
++notsupp:
+ #endif /* HAVE_EXT2_IOCTLS */
+ #endif
+-notsupp:
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ }
+Index: e2fsprogs/lib/e2p/getflags.c
+===================================================================
+--- e2fsprogs.orig/lib/e2p/getflags.c
++++ e2fsprogs/lib/e2p/getflags.c
+@@ -60,9 +60,9 @@ int getflags (int fd, unsigned long * fl
+ 	r = ioctl (fd, EXT2_IOC_GETFLAGS, &f);
+ 	*flags = f;
+ 	return r;
++notsupp:
+ #endif /* HAVE_EXT2_IOCTLS */
+ #endif
+-notsupp:
+ 	errno = EOPNOTSUPP;
+ 	return -1;
+ }
+Index: e2fsprogs/lib/e2p/setflags.c
+===================================================================
+--- e2fsprogs.orig/lib/e2p/setflags.c
++++ e2fsprogs/lib/e2p/setflags.c
+@@ -38,7 +38,6 @@
+ 
+ int setflags (int fd, unsigned long flags)
+ {
+-	struct stat buf;
+ #if HAVE_CHFLAGS
+ 	unsigned long bsd_flags = 0;
+ 
+@@ -58,6 +57,7 @@ int setflags (int fd, unsigned long flag
+ 	return fchflags (fd, bsd_flags);
+ #else
+ #if HAVE_EXT2_IOCTLS
++	struct stat buf;
+ 	int	f;
+ 
+ 	if (!fstat(fd, &buf) &&
