@@ -65,7 +65,7 @@ Index: e2fsprogs/lib/ext2fs/ext2fs.h
 ===================================================================
 --- e2fsprogs.orig/lib/ext2fs/ext2fs.h
 +++ e2fsprogs/lib/ext2fs/ext2fs.h
-@@ -1004,6 +1004,10 @@ extern errcode_t ext2fs_dup_handle(ext2_
+@@ -1003,6 +1003,10 @@ extern errcode_t ext2fs_dup_handle(ext2_
  extern errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir);
  
  /* ext_attr.c */
@@ -314,7 +314,7 @@ Index: e2fsprogs/lib/ext2fs/tst_read_ea.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/lib/ext2fs/tst_read_ea.c
-@@ -0,0 +1,233 @@
+@@ -0,0 +1,235 @@
 +/*
 + * tst_getsize.c --- this function tests the getsize function
 + *
@@ -509,23 +509,25 @@ Index: e2fsprogs/lib/ext2fs/tst_read_ea.c
 +		err = ext2fs_open(mnt->mnt_fsname, 0, 0, 0,
 +				  unix_io_manager, &fs);
 +		if (err) {
-+			com_err("tst_read_ea", err,
-+				"opening fs %s:%s",
++			com_err("tst_read_ea", err, "opening fs %s:%s",
 +				mnt->mnt_fsname, mnt->mnt_type);
 +			continue;
 +		}
 +		ext2fs_close(fs);
 +
-+		printf("(%s)%s:%s\n", mnt->mnt_type, mnt->mnt_fsname, mnt->mnt_dir);
++		printf("type=%s, fsname=%s, mtpt=%s\n", mnt->mnt_type,
++		       mnt->mnt_fsname, mnt->mnt_dir);
 +
 +		asprintf(&name, "%s/readeaXXXXXX", mnt->mnt_dir);
 +		fd = mkstemp(name);
 +		if (fd == -1) {
-+			perror("mkstemp failed");
-+			exit(1);
++			fprintf("tst_read_ea: mkstemp failed for %s: %s",
++				name, strerror(errno));
++			continue;
 +		}
 +		if (fstat(fd, &st)) {
-+			perror("fstat failed");
++			fprintf("tst_read_ea: create ok, fstat failed %s: %s\n",
++				name, strerror(errno));
 +			exit(1);
 +		}
 +		nr = set_xattrs(fd);
