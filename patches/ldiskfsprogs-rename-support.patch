@@ -1,0 +1,3771 @@
+Add a configure option --with-ldiskfsprogs to use names for the packaged
+files that don't conflict with the distribution's e2fsprogs.  Binaries
+are statically linked to ensure that the ldiskfs-patched libraries are
+used instead of the e2fsprogs-libs libraries.
+
+Index: ldiskfsprogs/Makefile.in
+===================================================================
+--- ldiskfsprogs.orig/Makefile.in
++++ ldiskfsprogs/Makefile.in
+@@ -59,10 +59,16 @@ clean-doc:
+ distclean-doc:
+ 	-test -d doc && cd doc && $(MAKE) distclean
+ 
+-install: subs all-libs-recursive install-progs-recursive \
++install: install_@E2FSPROGS@
++
++install_e2fsprogs: install_common all-libs-recursive \
+   install-shlibs-libs-recursive install-doc-libs
+ 	if test ! -d e2fsck && test ! -d debugfs && test ! -d e2scan && test ! -d misc && test ! -d ext2ed ; then $(MAKE) install-libs ; fi
+ 
++install_ldiskfsprogs: install_common
++
++install_common: subs install-progs-recursive
++
+ install-strip: subs all-libs-recursive install-strip-progs-recursive \
+   install-shlibs-strip-libs-recursive install-doc-libs
+ 
+Index: ldiskfsprogs/configure.in
+===================================================================
+--- ldiskfsprogs.orig/configure.in
++++ ldiskfsprogs/configure.in
+@@ -1097,6 +1097,77 @@ AC_SUBST(LINUX_CMT)
+ AC_SUBST(CYGWIN_CMT)
+ AC_SUBST(UNIX_CMT)
+ dnl
++dnl For lustre, e2fsprogs can be packaged as "ldiskfsprogs" to coexist
++dnl with distro's e2fsprogs.
++dnl
++AC_ARG_WITH([ldiskfsprogs],
++        AC_HELP_STRING([--with-ldiskfsprogs],
++                       [use alternate names for ldiskfs-enabled e2fsprogs]),
++        [],[with_ldiskfsprogs='no'])
++
++if test x"$with_ldiskfsprogs" = xyes; then
++        AC_DEFINE(HAVE_LDISKFSPROGS, 1, [enable use of ldiskfsprogs package])
++        FSNAME="ldiskfs"
++        E2FSPROGS="ldiskfsprogs"
++        E2FSPROGSURL="http://github.com/chaos/ldiskfsprogs"
++        MKFSPROG="mkfs.ldiskfs"
++        DEBUGFSPROG="debugfs.ldiskfs"
++        TUNEFSPROG="tunefs.ldiskfs"
++        LABELPROG="label.ldiskfs"
++        DUMPFSPROG="dumpfs.ldiskfs"
++        FSCKPROG="fsck.ldiskfs"
++        PFSCKPROG="pfsck.ldiskfs"
++	IMAGEPROG="image.ldiskfs"
++	RESIZEFSPROG="resizefs.ldiskfs"
++	SCANPROG="scan.ldiskfs"
++	E2FSPROGS_CMT=#
++	LDISKFSPROGS_CMT=""
++        AC_MSG_RESULT([enabled])
++else
++        FSNAME="ext4"
++        E2FSPROGS="e2fsprogs"
++        E2FSPROGSURL="http://downloads.lustre.org/public/tools/e2fsprogs"
++        MKFSPROG="mke2fs"
++        DEBUGFSPROG="debugfs"
++        TUNEFSPROG="tune2fs"
++        LABELPROG="e2label"
++        DUMPFSPROG="dumpe2fs"
++        FSCKPROG="e2fsck"
++        PFSCKPROG="fsck"
++	IMAGEPROG="e2image"
++	RESIZEFSPROG="resize2fs"
++	E2FSPROGS_CMT=""
++	LDISKFSPROGS_CMT=#
++        AC_MSG_RESULT([disabled])
++fi
++AC_DEFINE_UNQUOTED(E2FSPROGS,    "$E2FSPROGS",   [name of e2fsprogs package])
++AC_DEFINE_UNQUOTED(E2FSPROGSURL, "$E2FSPROGSURL",[url for e2fsprogs package])
++AC_DEFINE_UNQUOTED(MKFSPROG,     "$MKFSPROG",    [name of mkfs program])
++AC_DEFINE_UNQUOTED(DEBUGFSPROG,  "$DEBUGFSPROG", [name of debugfs program])
++AC_DEFINE_UNQUOTED(TUNEFSPROG,   "$TUNEFSPROG",  [name of tunefs program])
++AC_DEFINE_UNQUOTED(LABELPROG,    "$LABELPROG",   [name of label program])
++AC_DEFINE_UNQUOTED(DUMPFSPROG,   "$DUMPFSPROG",  [name of dumpfs program])
++AC_DEFINE_UNQUOTED(FSCKPROG,     "$FSCKPROG",    [name of fsck program])
++AC_DEFINE_UNQUOTED(PFSCKPROG,    "$PFSCKPROG",   [name of pfsck program])
++AC_DEFINE_UNQUOTED(IMAGEPROG,    "$IMAGEPROG",   [name of image program])
++AC_DEFINE_UNQUOTED(RESIZEFSPROG, "$RESIZEFSPROG",[name of resizefs program])
++AC_DEFINE_UNQUOTED(SCANPROG,     "$SCANPROG",    [name of scan program])
++AC_SUBST(FSNAME)
++AC_SUBST(E2FSPROGS)
++AC_SUBST(MKFSPROG)
++AC_SUBST(MKFSPROGURL)
++AC_SUBST(DEBUGFSPROG)
++AC_SUBST(TUNEFSPROG)
++AC_SUBST(LABELPROG)
++AC_SUBST(DUMPFSPROG)
++AC_SUBST(FSCKPROG)
++AC_SUBST(PFSCKPROG)
++AC_SUBST(IMAGEPROG)
++AC_SUBST(RESIZEFSPROG)
++AC_SUBST(SCANPROG)
++AC_SUBST(E2FSPROGS_CMT)
++AC_SUBST(LDISKFSPROGS_CMT)
++dnl
+ dnl Linux and Hurd places root files in the / by default
+ dnl
+ case "$host_os" in
+Index: ldiskfsprogs/debugfs/Makefile.in
+===================================================================
+--- ldiskfsprogs.orig/debugfs/Makefile.in
++++ ldiskfsprogs/debugfs/Makefile.in
+@@ -11,8 +11,8 @@ INSTALL = @INSTALL@
+ 
+ @MCONFIG@
+ 
+-PROGS=		debugfs
+-MANPAGES=	debugfs.8
++PROGS=		@DEBUGFSPROG@
++MANPAGES=	@DEBUGFSPROG@.8
+ 
+ MK_CMDS=	_SS_DIR_OVERRIDE=../lib/ss ../lib/ss/mk_cmds
+ 
+@@ -36,17 +36,17 @@ DEPLIBS= $(LIBEXT2FS) $(LIBE2P) $(DEPLIB
+ 
+ all:: $(PROGS) $(MANPAGES)
+ 
+-debugfs: $(DEBUG_OBJS) $(DEPLIBS)
++@DEBUGFSPROG@: $(DEBUG_OBJS) $(DEPLIBS)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o debugfs $(DEBUG_OBJS) $(LIBS)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o @DEBUGFSPROG@ $(DEBUG_OBJS) $(LIBS)
+ 
+ debug_cmds.c debug_cmds.h: debug_cmds.ct
+ 	$(E) "	MK_CMDS $@"
+ 	$(Q) $(MK_CMDS) $(srcdir)/debug_cmds.ct
+ 
+-debugfs.8: $(DEP_SUBSTITUTE) $(srcdir)/debugfs.8.in
++@DEBUGFSPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/debugfs.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/debugfs.8.in debugfs.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/debugfs.8.in @DEBUGFSPROG@.8
+ 
+ installdirs:
+ 	$(E) "	MKINSTALLDIRS $(root_sbindir) $(man8dir)"
+@@ -81,7 +81,7 @@ uninstall:
+ 	done
+ 
+ clean:
+-	$(RM) -f debugfs debugfs.8 \#* *.s *.o *.a *~ debug_cmds.c core
++	$(RM) -f $(PROGS) $(MANPAGES) \#* *.s *.o *.a *~ debug_cmds.c core
+ 
+ mostlyclean: clean
+ distclean: clean
+Index: ldiskfsprogs/debugfs/debugfs.8.in
+===================================================================
+--- ldiskfsprogs.orig/debugfs/debugfs.8.in
++++ ldiskfsprogs/debugfs/debugfs.8.in
+@@ -2,11 +2,11 @@
+ .\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH DEBUGFS 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @DEBUGFSPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-debugfs \- ext2/ext3/ext4 file system debugger
++@DEBUGFSPROG@ \- ext2/ext3/ext4 file system debugger
+ .SH SYNOPSIS
+-.B debugfs
++.B @DEBUGFSPROG@
+ [
+ .B \-DVwci
+ ]
+@@ -35,7 +35,7 @@ device
+ ]
+ .SH DESCRIPTION
+ The 
+-.B debugfs 
++.B @DEBUGFSPROG@
+ program is an interactive file system debugger. It can be used to
+ examine and change the state of an ext2, ext3, or ext4 file system.
+ .br
+@@ -62,11 +62,11 @@ represents an ext2 image file created by
+ program.  Since the ext2 image file only contains the superblock, block
+ group descriptor, block and inode allocation bitmaps, and 
+ the inode table, many
+-.B debugfs
++.B @DEBUGFSPROG@
+ commands will not function properly.  
+ .B Warning:
+ no safety checks are in place, and 
+-.B debugfs 
++.B @DEBUGFSPROG@
+ may fail in interesting ways if commands such as
+ .IR ls ", " dump ", " 
+ etc. are tried without specifying the 
+@@ -74,7 +74,7 @@ etc. are tried without specifying the 
+ using the 
+ .I \-d
+ option.
+-.B debugfs 
++.B @DEBUGFSPROG@
+ is a debugging tool.  It has rough edges!
+ .TP
+ .I -d data_source_device
+@@ -100,39 +100,39 @@ option.
+ .TP
+ .I -f cmd_file
+ Causes 
+-.B debugfs
++.B @DEBUGFSPROG@
+ to read in commands from 
+ .IR cmd_file , 
+ and execute them.  When 
+-.B debugfs
++.B @DEBUGFSPROG@
+ is finished executing those commands, it will exit.
+ .TP
+ .I -D
+ Causes
+-.B debugfs
++.B @DEBUGFSPROG@
+ to open the device using Direct I/O, bypassing the buffer cache.  Note
+ that some Linux devices, notably device mapper as of this writing, do
+ not support Direct I/O.
+ .TP
+ .I -R request
+ Causes 
+-.B debugfs
++.B @DEBUGFSPROG@
+ to execute the single command 
+ .IR request ,
+ and then exit.
+ .TP
+ .I -V
+ print the version number of 
+-.B debugfs
++.B @DEBUGFSPROG@
+ and exit.
+ .SH SPECIFYING FILES
+ Many
+-.B debugfs
++.B @DEBUGFSPROG@
+ commands take a
+ .I filespec
+ as an argument to specify an inode (as opposed to a pathname) 
+ in the filesystem which is currently opened by 
+-.BR debugfs . 
++.BR @DEBUGFSPROG@ . 
+ The
+ .I filespec
+ argument may be specified in two forms.  The first form is an inode 
+@@ -141,12 +141,12 @@ number surrounded by angle brackets, e.g
+ The second form is a pathname; if the pathname is prefixed by a forward slash
+ ('/'), then it is interpreted relative to the root of the filesystem 
+ which is currently opened by 
+-.BR debugfs .
++.BR @DEBUGFSPROG@ .
+ If not, the pathname is 
+ interpreted relative to the current working directory as maintained by 
+-.BR debugfs .  
++.BR @DEBUGFSPROG@ .
+ This may be modified by using the 
+-.B debugfs
++.B @DEBUGFSPROG@
+ command
+ .IR cd .
+ .\" 
+@@ -154,7 +154,7 @@ command
+ .\"
+ .SH COMMANDS
+ This is a list of the commands which 
+-.B debugfs
++.B @DEBUGFSPROG@
+ supports.
+ .TP
+ .I bmap filespec logical_block
+@@ -262,7 +262,7 @@ Free the inode specified by 
+ .TP
+ .I help
+ Print a list of commands understood by 
+-.BR debugfs .
++.BR @DEBUGFSPROG@ .
+ .TP
+ .I icheck block ...
+ Print a listing of the inodes which use the one or more blocks specified
+@@ -280,7 +280,7 @@ with device size
+ .IR blocksize .
+ Note that this does not fully initialize all of the data structures; 
+ to do this, use the 
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+ program.  This is just a call to the low-level library, which sets up
+ the superblock and block descriptors.
+ .TP
+@@ -294,7 +294,7 @@ command if you wish to unlink a file.
+ .TP
+ .I lcd directory
+ Change the current working directory of the
+-.B debugfs
++.B @DEBUGFSPROG@
+ process to
+ .I directory
+ on the native filesystem.
+@@ -381,7 +381,7 @@ prevent the filesystem from being opened
+ flag causes the filesystem to be opened in exclusive mode.  The
+ .IR -b ", " -c ", " -i ", " -s ", " -w ", and " -D
+ options behave the same as the command-line options to 
+-.BR debugfs .
++.BR @DEBUGFSPROG@ .
+ .TP
+ .I punch filespec start_blk [end_blk]
+ Delete the blocks in the inode ranging from
+@@ -400,7 +400,7 @@ Print the current working directory.
+ .TP
+ .I quit
+ Quit
+-.B debugfs
++.B @DEBUGFSPROG@
+ .TP
+ .I rdump directory destination
+ Recursively dump
+@@ -508,7 +508,7 @@ the inode to a directory may require the
+ could allocate a block that had been used by one of the
+ yet-to-be-undeleted files.  So it is safer to undelete all of the 
+ inodes without specifying a destination pathname, and then in a separate
+-pass, use the debugfs
++pass, use the @DEBUGFSPROG@
+ .B link
+ command to link the inode to the destination pathname, or use 
+ .B e2fsck
+@@ -530,7 +530,7 @@ into the destination file.
+ .TP
+ .B DEBUGFS_PAGER, PAGER
+ The
+-.B debugfs
++.B @DEBUGFSPROG@
+ program always pipes the output of the some commands through a
+ pager program.  These commands include: 
+ .IR show_super_stats ,
+@@ -557,10 +557,10 @@ environment variable is available to ove
+ .B PAGER
+ environment variable.
+ .SH AUTHOR
+-.B debugfs
++.B @DEBUGFSPROG@
+ was written by Theodore Ts'o <tytso@mit.edu>.
+ .SH SEE ALSO
+-.BR dumpe2fs (8),
+-.BR tune2fs (8),
+-.BR e2fsck (8),
+-.BR mke2fs (8)
++.BR @DUMPFSPROG@ (8),
++.BR @TUNEFSPROG@ (8),
++.BR @FSCKPROG@ (8),
++.BR @MKFSPROG@ (8)
+Index: ldiskfsprogs/debugfs/debugfs.c
+===================================================================
+--- ldiskfsprogs.orig/debugfs/debugfs.c
++++ ldiskfsprogs/debugfs/debugfs.c
+@@ -2259,7 +2259,7 @@ int main(int argc, char **argv)
+ 	char		*data_filename = 0;
+ 
+ 	if (debug_prog_name == 0)
+-		debug_prog_name = "debugfs";
++		debug_prog_name = DEBUGFSPROG;
+ 
+ 	add_error_table(&et_ext2_error_table);
+ 	fprintf (stderr, "%s %s (%s)\n", debug_prog_name,
+Index: ldiskfsprogs/e2fsck/Makefile.in
+===================================================================
+--- ldiskfsprogs.orig/e2fsck/Makefile.in
++++ ldiskfsprogs/e2fsck/Makefile.in
+@@ -11,10 +11,10 @@ INSTALL = @INSTALL@
+ 
+ @MCONFIG@
+ 
+-PROGS=		e2fsck
++PROGS=		@FSCKPROG@
+ @LFSCK_CMT@USPROGS= lfsck
+-MANPAGES=	e2fsck.8
+-FMANPAGES=	e2fsck.conf.5
++MANPAGES=	@FSCKPROG@.8
++FMANPAGES=	@FSCKPROG@.conf.5
+ @LFSCK_CMT@MANPAGES   += lfsck.8
+ XTRA_CFLAGS=	-DRESOURCE_TRACK -I.
+ 
+@@ -118,7 +118,7 @@ SRCS= $(srcdir)/e2fsck.c \
+ @LFSCK_CMT@SRCS += $(srcdir)/lfsck_common.c
+ 
+ @LFSCK_CMT@LFSCK_SRCS = $(srcdir)/lfsck_common.c $(srcdir)/lfsck.c
+-all:: profiled $(PROGS) $(USPROGS) e2fsck $(MANPAGES) $(FMANPAGES)
++all:: profiled $(PROGS) $(USPROGS) @FSCKPROG@ $(MANPAGES) $(FMANPAGES)
+ 
+ @PROFILE_CMT@all:: e2fsck.profiled
+ 
+@@ -126,9 +126,9 @@ prof_err.c prof_err.h: prof_err.et
+ 	$(E) "	COMPILE_ET prof_err.et"
+ 	$(Q) $(COMPILE_ET) $(srcdir)/prof_err.et
+ 
+-e2fsck: $(OBJS)  $(DEPLIBS)
++@FSCKPROG@: $(OBJS)  $(DEPLIBS)
+ 	$(E) "	LD $@"
+-	$(Q) $(LD) $(ALL_LDFLAGS) -o e2fsck $(OBJS) $(LIBS) 
++	$(Q) $(LD) $(ALL_LDFLAGS) -o @FSCKPROG@ $(OBJS) $(LIBS)
+ 
+ e2fsck.static: $(OBJS) $(STATIC_DEPLIBS)
+ 	$(E) "	LD $@"
+@@ -204,20 +204,22 @@ profiled:
+ lfsck.8: $(DEP_SUBSTITUTE) $(srcdir)/lfsck.8.in
+ 	$(SUBSTITUTE_UPTIME) $(srcdir)/lfsck.8.in lfsck.8
+ 
+-e2fsck.8: $(DEP_SUBSTITUTE) $(srcdir)/e2fsck.8.in
++@FSCKPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/e2fsck.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2fsck.8.in e2fsck.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2fsck.8.in @FSCKPROG@.8
+ 
+-e2fsck.conf.5: $(DEP_SUBSTITUTE) $(srcdir)/e2fsck.conf.5.in
++@FSCKPROG@.conf.5: $(DEP_SUBSTITUTE) $(srcdir)/e2fsck.conf.5.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2fsck.conf.5.in e2fsck.conf.5
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2fsck.conf.5.in @FSCKPROG@.conf.5
+ 
+ installdirs:
+ 	$(E) "	MKINSTALLDIRS $(root_sbindir) $(sbindir) $(man8dir)"
+ 	$(Q) $(MKINSTALLDIRS) $(DESTDIR)$(root_sbindir) \
+ 		$(DESTDIR)$(man8dir) $(DESTDIR)$(man5dir) $(DESTDIR)$(sbindir)
+ 
+-install: $(PROGS)  $(USPROGS) $(MANPAGES) $(FMANPAGES) installdirs
++install: install_@E2FSPROGS@
++
++install_common: $(PROGS)  $(USPROGS) $(MANPAGES) $(FMANPAGES) installdirs
+ 	$(Q) for i in $(PROGS); do \
+ 		echo "	INSTALL $(root_sbindir)/$$i"; \
+ 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(root_sbindir)/$$i; \
+@@ -226,11 +228,6 @@ install: $(PROGS)  $(USPROGS) $(MANPAGES
+ 		echo "  INSTALL $(sbindir)/$$i"; \
+ 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(sbindir)/$$i; \
+ 	done
+-	$(Q) for i in ext2 ext3 ext4 ext4dev; do \
+-		echo "	LINK $(root_sbindir)/fsck.$$i"; \
+-		(cd $(DESTDIR)$(root_sbindir); \
+-			$(LN) $(LINK_INSTALL_FLAGS) e2fsck fsck.$$i); \
+-	done
+ 	$(Q) for i in $(MANPAGES); do \
+ 		for j in $(COMPRESS_EXT); do \
+ 			$(RM) -f $(DESTDIR)$(man8dir)/$$i.$$j; \
+@@ -245,6 +242,15 @@ install: $(PROGS)  $(USPROGS) $(MANPAGES
+ 		echo "	INSTALL_DATA $(man5dir)/$$i"; \
+ 		$(INSTALL_DATA) $$i $(DESTDIR)$(man5dir)/$$i; \
+ 	done
++
++install_ldiskfsprogs: install_common
++
++install_e2fsprogs: install_common
++	$(Q) for i in ext2 ext3 ext4 ext4dev; do \
++		echo "	LINK $(root_sbindir)/fsck.$$i"; \
++		(cd $(DESTDIR)$(root_sbindir); \
++			$(LN) $(LINK_INSTALL_FLAGS) e2fsck fsck.$$i); \
++	done
+ 	$(Q) for i in ext2 ext3 ext4 ext4dev; do \
+ 		echo "	LINK $(man8dir)/fsck.$$i.8"; \
+ 		(cd $(DESTDIR)$(man8dir); \
+@@ -281,7 +287,7 @@ uninstall:
+ 
+ clean:
+ 	$(RM) -f $(PROGS) $(USPROGS) \#* *\# *.s *.o *.a *~ core e2fsck.static \
+-		e2fsck.shared e2fsck.profiled flushb e2fsck.8 \
++		e2fsck.shared e2fsck.profiled flushb $(MANPAGES) $(FMANPAGES) \
+ 		tst_problem tst_crc32 tst_region tst_refcount gen_crc32table \
+ 		crc32table.h e2fsck.conf.5 prof_err.c prof_err.h \
+ 		test_profile
+Index: ldiskfsprogs/e2fsck/e2fsck.8.in
+===================================================================
+--- ldiskfsprogs.orig/e2fsck/e2fsck.8.in
++++ ldiskfsprogs/e2fsck/e2fsck.8.in
+@@ -2,11 +2,11 @@
+ .\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH E2FSCK 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @FSCKPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-e2fsck \- check a Linux ext2/ext3/ext4 file system
++@FSCKPROG@ \- check a Linux ext2/ext3/ext4 file system
+ .SH SYNOPSIS
+-.B e2fsck
++.B @FSCKPROG@
+ [
+ .B \-pacnyrdfkvtDFV
+ ]
+@@ -36,13 +36,13 @@ e2fsck \- check a Linux ext2/ext3/ext4 f
+ ]
+ .I device
+ .SH DESCRIPTION
+-.B e2fsck
++.B @FSCKPROG@
+ is used to check the ext2/ext3/ext4 family of file systems.   
+ For ext3 and ext4 filesystems that use a journal, if the system has been
+ shut down uncleanly without any errors, normally, after replaying the
+ committed transactions  in the journal, the file system should be
+ marked as clean.   Hence, for filesystems that use journalling,
+-.B e2fsck
++.B @FSCKPROG@
+ will normally replay the journal and exit, unless its superblock
+ indicates that further checking is required.
+ .PP
+@@ -51,7 +51,7 @@ is the device file where the filesystem 
+ .IR /dev/hdc1 ).
+ .PP
+ Note that in general it is not safe to run
+-.B e2fsck
++.B @FSCKPROG@
+ on mounted filesystems.  The only exception is if the
+ .B \-n
+ option is specified, and 
+@@ -62,9 +62,9 @@ or
+ options are 
+ .I not
+ specified.   However, even if it is safe to do so, the results printed by
+-.B e2fsck
++.B @FSCKPROG@
+ are not valid if the filesystem is mounted.   If 
+-.B e2fsck
++.B @FSCKPROG@
+ asks whether or not you should check a filesystem which is mounted, 
+ the only correct answer is ``no''.  Only experts who really know what
+ they are doing should consider answering this question in any other way.
+@@ -89,36 +89,36 @@ superblock can be found at block 8193; f
+ blocksizes, at block 16384; and for 4k blocksizes, at block 32768.  
+ .IP
+ Additional backup superblocks can be determined by using the 
+-.B mke2fs 
++.B @MKFSPROG@
+ program using the 
+ .B \-n
+ option to print out where the superblocks were created.   The 
+ .B \-b 
+ option to 
+-.BR mke2fs ,
++.BR @MKFSPROG@ ,
+ which specifies blocksize of the filesystem must be specified in order
+ for the superblock locations that are printed out to be accurate.
+ .IP
+ If an alternative superblock is specified and  
+-the filesystem is not opened read-only, e2fsck will make sure that the
++the filesystem is not opened read-only, @FSCKPROG@ will make sure that the
+ primary superblock is updated appropriately upon completion of the 
+ filesystem check.
+ .TP
+ .BI \-B " blocksize"
+ Normally, 
+-.B e2fsck
++.B @FSCKPROG@
+ will search for the superblock at various different
+ block sizes in an attempt to find the appropriate block size.
+ This search can be fooled in some cases.  This option forces 
+-.B e2fsck
++.B @FSCKPROG@
+ to only try locating the superblock at a particular blocksize.
+ If the superblock is not found, 
+-.B e2fsck 
++.B @FSCKPROG@
+ will terminate with a fatal error.
+ .TP
+ .B \-c
+ This option causes 
+-.B e2fsck 
++.B @FSCKPROG@
+ to use 
+ .BR badblocks (8)
+ program to do a read-only scan of the device in order to find any bad
+@@ -129,28 +129,28 @@ using a non-destructive read-write test.
+ .TP
+ .BI \-C " fd"
+ This option causes
+-.B e2fsck
++.B @FSCKPROG@
+ to write completion information to the specified file descriptor 
+ so that the progress of the filesystem 
+ check can be monitored.  This option is typically used by programs 
+ which are running
+-.BR e2fsck .
++.BR @FSCKPROG@ .
+ If the file descriptor number is negative, then absolute value of
+ the file descriptor will be used, and the progress information will be
+ suppressed initially.  It can later be enabled by sending the
+-.B e2fsck
++.B @FSCKPROG@
+ process a SIGUSR1 signal.
+ If the file descriptor specified is 0, 
+-.B e2fsck
++.B @FSCKPROG@
+ will print a completion bar as it goes about its business.  This requires
+-that e2fsck is running on a video console or terminal.
++that @FSCKPROG@ is running on a video console or terminal.
+ .TP
+ .B \-d
+ Print debugging output (useless unless you are debugging
+-.BR e2fsck ).
++.BR @FSCKPROG@ ).
+ .TP
+ .B \-D
+-Optimize directories in filesystem.  This option causes e2fsck to
++Optimize directories in filesystem.  This option causes @FSCKPROG@ to
+ try to optimize all directories, either by reindexing them if the
+ filesystem supports directory indexing,  or by sorting and compressing
+ directories for smaller directories, or for filesystems using
+@@ -159,7 +159,7 @@ traditional linear directories.
+ Even without the
+ .B \-D
+ option,
+-.B e2fsck
++.B @FSCKPROG@
+ may sometimes optimize a few directories --- for example, if
+ directory indexing is enabled and a directory is not indexed and would
+ benefit from being indexed, or if the index structures are corrupted
+@@ -172,10 +172,10 @@ in practice, you should rarely need to u
+ The
+ .B \-D
+ option will detect directory entries with duplicate names in a single
+-directory, which e2fsck normally does not enforce for performance reasons.
++directory, which @FSCKPROG@ normally does not enforce for performance reasons.
+ .TP
+ .BI \-E " extended_options"
+-Set e2fsck extended options.  Extended options are comma
++Set @FSCKPROG@ extended options.  Extended options are comma
+ separated, and may take an argument using the equals ('=') sign.  The 
+ following options are supported:
+ .RS 1.2i
+@@ -195,7 +195,7 @@ or simply deleted (delete).  The default
+ .TP
+ .BI ea_ver= extended_attribute_version
+ Set the version of the extended attribute blocks which
+-.B e2fsck
++.B @FSCKPROG@
+ will require while checking the filesystem.  The version number may 
+ be 1 or 2.  The default extended attribute version format is 2.
+ .TP
+@@ -237,7 +237,7 @@ Force checking even if the file system s
+ .B \-F
+ Flush the filesystem device's buffer caches before beginning.  Only
+ really useful for doing 
+-.B e2fsck 
++.B @FSCKPROG@
+ time trials.
+ @JDEV@.TP
+ @JDEV@.BI \-j " external-journal"
+@@ -265,7 +265,7 @@ must be given the blocksize of the files
+ results.  As a result, it is much simpler and safer to use the 
+ .B -c
+ option to 
+-.BR e2fsck ,
++.BR @FSCKPROG@ ,
+ since it will assure that the correct parameters are passed to the
+ .B badblocks
+ program.
+@@ -281,7 +281,7 @@ in the file are added to the bad blocks 
+ .B \-n
+ Open the filesystem read-only, and assume an answer of `no' to all
+ questions.  Allows
+-.B e2fsck
++.B @FSCKPROG@
+ to be used non-interactively.  This option
+ may not be specified at the same time as the 
+ .B \-p
+@@ -291,14 +291,14 @@ options.
+ .TP
+ .B \-p
+ Automatically repair ("preen") the file system.  This option will cause
+-.B e2fsck
++.B @FSCKPROG@
+ to automatically
+ fix any filesystem problems that can be safely fixed without human
+ intervention.  If 
+-.B e2fsck
++.B @FSCKPROG@
+ discovers a problem which may require the system administrator
+ to take additional corrective action, 
+-.B e2fsck
++.B @FSCKPROG@
+ will print a description of the problem and then exit with the value 4
+ logically or'ed into the exit code.  (See the \fBEXIT CODE\fR section.)
+ This option is normally used by the system's boot scripts.  It may not 
+@@ -314,7 +314,7 @@ compatibility.
+ .TP
+ .B \-t
+ Print timing statistics for
+-.BR e2fsck .
++.BR @FSCKPROG@ .
+ If this option is used twice, additional timing statistics are printed
+ on a pass by pass basis.
+ .TP
+@@ -326,7 +326,7 @@ Print version information and exit.
+ .TP
+ .B \-y
+ Assume an answer of `yes' to all questions; allows 
+-.B e2fsck
++.B @FSCKPROG@
+ to be used non-interactively.  This option
+ may not be specified at the same time as the 
+ .B \-n
+@@ -345,11 +345,11 @@ options.
+ @LFSCK_MAN@A separate database file should be specified for each OST device in
+ @LFSCK_MAN@the filesystem.  For convenience a stub
+ @LFSCK_MAN@.BR mdsdb .hdr
+-@LFSCK_MAN@file is generated for use by the OST e2fsck to avoid the need to
+-@LFSCK_MAN@wait for the MDS e2fsck to finish or copy the full mdsdb to the OSTs.
++@LFSCK_MAN@file is generated for use by the OST @FSCKPROG@ to avoid the need to
++@LFSCK_MAN@wait for the MDS @FSCKPROG@ to finish or copy the full mdsdb to the OSTs.
+ .SH EXIT CODE
+ The exit code returned by
+-.B e2fsck
++.B @FSCKPROG@
+ is the sum of the following conditions:
+ .br
+ \	0\	\-\ No errors
+@@ -366,17 +366,17 @@ is the sum of the following conditions:
+ .br
+ \	16\	\-\ Usage or syntax error
+ .br
+-\	32\	\-\ E2fsck canceled by user request
++\	32\	\-\ @FSCKPROG@ canceled by user request
+ .br
+ \	128\	\-\ Shared library error
+ .br
+ .SH SIGNALS
+ The following signals have the following effect when sent to 
+-.BR e2fsck .
++.BR @FSCKPROG@ .
+ .TP
+ .B SIGUSR1
+ This signal causes
+-.B e2fsck
++.B @FSCKPROG@
+ to start displaying a completion bar or emitting progress information.  
+ (See discussion of the 
+ .B \-C
+@@ -384,70 +384,70 @@ option.)
+ .TP
+ .B SIGUSR2
+ This signal causes
+-.B e2fsck 
++.B @FSCKPROG@
+ to stop displaying a completion bar or emitting progress information.
+ .SH REPORTING BUGS
+ Almost any piece of software will have bugs.  If you manage to find a
+ filesystem which causes 
+-.B e2fsck
++.B @FSCKPROG@
+ to crash, or which 
+-.B e2fsck
++.B @FSCKPROG@
+ is unable to repair, please report it to the author.
+ .PP
+ Please include as much information as possible in your bug report.
+ Ideally, include a complete transcript of the
+-.B e2fsck
++.B @FSCKPROG@
+ run, so I can see exactly what error messages are displayed.  (Make sure
+ the messages printed by 
+-.B e2fsck 
++.B @FSCKPROG@
+ are in English; if your system has been
+ configured so that 
+-.BR e2fsck 's
++.BR @FSCKPROG@ 's
+ messages have been translated into another language, please set the the
+ .B LC_ALL
+ environment variable to
+ .B C
+-so that the transcript of e2fsck's output will be useful to me.)
++so that the transcript of @FSCKPROG@'s output will be useful to me.)
+ If you
+ have a writable filesystem where the transcript can be stored, the 
+ .BR script (1)
+ program is a handy way to save the output of
+-.B e2fsck
++.B @FSCKPROG@
+ to a file.
+ .PP
+ It is also useful to send the output of 
+-.BR dumpe2fs (8).
++.BR @DUMPFSPROG@ (8).
+ If a specific inode or inodes seems to be giving 
+-.B e2fsck 
++.B @FSCKPROG@
+ trouble, try running the
+-.BR debugfs (8)
++.BR @DEBUGFSPROG@ (8)
+ command and send the output of the 
+ .BR stat (1u)
+ command run on the relevant inode(s).  If the inode is a directory, the 
+-.B debugfs
++.B @DEBUGFSPROG@
+ .I dump
+ command will allow you to extract the contents of the directory inode,
+ which can sent to me after being first run through
+ .BR uuencode (1).  
+ The most useful data you can send to help reproduce
+ the bug is a compressed raw image dump of the filesystem, generated using
+-.BR e2image (8).
++.BR @IMAGEPROG@ (8).
+ See the 
+-.BR e2image (8)
++.BR @IMAGEPROG@ (8)
+ man page for more details.
+ .PP
+ Always include the full version string which 
+-.B e2fsck
++.B @FSCKPROG@
+ displays when it is run, so I know which version you are running.
+ .SH AUTHOR
+ This version of 
+-.B e2fsck
++.B @FSCKPROG@
+ was written by Theodore Ts'o <tytso@mit.edu>.
+ .SH SEE ALSO
+-.BR e2fsck.conf (5),
++.BR @FSCKPROG@.conf (5),
+ .BR badblocks (8),
+-.BR dumpe2fs (8),
+-.BR debugfs (8),
+-.BR e2image (8),
+-.BR mke2fs (8),
+-.BR tune2fs (8)
++.BR @DUMPFSPROG@ (8),
++.BR @DEBUGFSPROG@ (8),
++.BR @IMAGEPROG@ (8),
++.BR @MKFSPROG@ (8),
++.BR @TUNEFSPROG@ (8)
+Index: ldiskfsprogs/e2fsck/e2fsck.conf.5.in
+===================================================================
+--- ldiskfsprogs.orig/e2fsck/e2fsck.conf.5.in
++++ ldiskfsprogs/e2fsck/e2fsck.conf.5.in
+@@ -2,19 +2,19 @@
+ .\" Copyright 2006 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH e2fsck.conf 5 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @FSCKPROG@.conf 5 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
+ .SH NAME
+-e2fsck.conf \- Configuration file for e2fsck
++@FSCKPROG@.conf \- Configuration file for @FSCKPROG@
+ .SH DESCRIPTION
+-.I e2fsck.conf
++.I @FSCKPROG@.conf
+ is the configuration file for 
+-.BR e2fsck (8).  
++.BR @FSCKPROG@ (8).  
+ It controls the default behavior of 
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ while it is checking ext2, ext3, or ext4 filesystems.
+ .PP
+ The
+-.I e2fsck.conf
++.I @FSCKPROG@.conf
+ file uses an INI-style format.  Stanzas, or top-level sections, are 
+ delimited by square braces: [ ].  Within each section, each line 
+ defines a relation, which assigns tags to values, or to a subsection,
+@@ -60,21 +60,21 @@ apply: "\en" (for the newline character)
+ and "\e\e" (for the backslash character).
+ .P
+ The following stanzas are used in the 
+-.I e2fsck.conf
++.I @FSCKPROG@.conf
+ file.  They will be described in more detail in future sections of this
+ document.
+ .TP 
+ .I [options]
+ This stanza contains general configuration parameters for 
+-.BR e2fsck 's
++.BR @FSCKPROG@ 's
+ behavior.
+ .TP
+ .I [problems]
+-This stanza allows the administrator to reconfigure how e2fsck handles
++This stanza allows the administrator to reconfigure how @FSCKPROG@ handles
+ various filesystem inconsistencies.
+ .TP
+ .I [scratch_files]
+-This stanza controls when e2fsck will attempt to use scratch files to
++This stanza controls when @FSCKPROG@ will attempt to use scratch files to
+ reduce the need for memory.
+ .SH THE [options] STANZA
+ The following relations are defined in the 
+@@ -83,8 +83,8 @@ stanza.
+ .TP
+ .I allow_cancellation
+ If this relation is set to a boolean value of true, then if the user 
+-interrupts e2fsck using ^C, and the filesystem is not explicitly flagged
+-as containing errors, e2fsck will exit with an exit status of 0 instead
++interrupts @FSCKPROG@ using ^C, and the filesystem is not explicitly flagged
++as containing errors, @FSCKPROG@ will exit with an exit status of 0 instead
+ of 32.  This setting defaults to false.
+ .TP
+ .I accept_time_fudge
+@@ -92,7 +92,7 @@ Unfortunately, due to Windows' unfortuna
+ to configure the hardware clock to tick localtime, instead
+ of the more proper and less error-prone UTC time, many
+ users end up in the situation where the system clock is
+-incorrectly set at the time when e2fsck is run.
++incorrectly set at the time when @FSCKPROG@ is run.
+ .IP
+ Historically this was usually due to some distributions
+ having buggy init scripts and/or installers that didn't
+@@ -111,21 +111,21 @@ boolean value of false.  This setting de
+ .TP
+ .I broken_system_clock
+ The
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ program has some hueristics that assume that the system clock is
+ correct.  In addition, many system programs make similar assumptions.
+ For example, the UUID library depends on time not going backwards in
+ order for it to be able to make its guarantees about issuing universally
+ unique ID's.  Systems with broken system clocks, are well, broken.
+ However, broken system clocks, particularly in embedded systems, do
+-exist.  E2fsck will attempt to use hueristics to determine if the time
++exist.  @FSCKPROG@ will attempt to use hueristics to determine if the time
+ can no tbe trusted; and to skip time-based checks if this is true.  If
+-this boolean is set to true, then e2fsck will always assume that the
++this boolean is set to true, then @FSCKPROG@ will always assume that the
+ system clock can not be trusted.
+ .TP
+ .I clear_test_fs_flag
+ This boolean relation controls whether or not 
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ will offer to clear
+ the test_fs flag if the ext4 filesystem is available on the system.  It
+ defaults to true.
+@@ -134,14 +134,14 @@ defaults to true.
+ This string relation controls the default handling of shared blocks in pass 1D.
+ It can be set to dup or zero.  See the
+ .I "-E clone" 
+-option description in e2fsck(8).
++option description in @FSCKPROG@(8).
+ .TP
+ .I shared
+ This string relation controls the default disposition of files discovered to 
+ have shared blocks in pass 1D.  It can be set to preserve, lost+found, 
+ or delete.  See the
+ .I "-E shared" 
+-option description in e2fsck(8).
++option description in @FSCKPROG@(8).
+ .TP 
+ .I defer_check_on_battery
+ This boolean relation controls whether or not the interval between 
+@@ -151,7 +151,7 @@ true.
+ .TP
+ .I indexed_dir_slack_percentage
+ When
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ repacks a indexed directory, reserve the specified percentage of
+ empty space in each leaf nodes so that a few new entries can
+ be added to the directory without splitting leaf nodes, so that
+@@ -168,7 +168,7 @@ subsection override the default treatmen
+ code.
+ .P
+ Note that inappropriate settings in this stanza may cause 
+-.B e2fsck
++.B @FSCKPROG@
+ to behave incorrectly, or even crash.  Most system administrators should
+ not be making changes to this section without referring to source code.
+ .P
+@@ -181,7 +181,7 @@ inconsistency is detected to be overridd
+ .I preen_ok
+ This boolean relation overrides the default behavior controlling 
+ whether this filesystem problem should be automatically fixed when
+-.B e2fsck
++.B @FSCKPROG@
+ is running in preen mode.
+ .TP
+ .I no_ok
+@@ -197,14 +197,14 @@ problem (or question) should be "no".
+ This boolean relation overrides the default behavior controlling 
+ whether or not the description for this filesystem problem should
+ be suppressed when
+-.B e2fsck
++.B @FSCKPROG@
+ is running in preen mode.
+ .TP
+ .I no_nomsg
+ This boolean relation overrides the default behavior controlling 
+ whether or not the description for this filesystem problem should
+ be suppressed when a problem forced not to be fixed, either because
+-.B e2fsck
++.B @FSCKPROG@
+ is run with the
+ .B -n
+ option or because the
+@@ -226,7 +226,7 @@ stanza.
+ .TP
+ .I directory
+ If the directory named by this relation exists and is writeable, then
+-e2fsck will attempt to use this directory to store scratch files instead
++@FSCKPROG@ will attempt to use this directory to store scratch files instead
+ of using in-memory data structures.
+ .TP
+ .I numdirs_threshold
+@@ -243,7 +243,7 @@ This relation controls whether or not th
+ instead of an in-memory data structure when tracking inode counts.  It
+ defaults to true.
+ .SH EXAMPLES
+-The following recipe will prevent e2fsck from aborting during the boot
++The following recipe will prevent @FSCKPROG@ from aborting during the boot
+ process when a filesystem contains orphaned files.  (Of course, this is
+ not always a good idea, since critical files that are needed for the
+ security of the system could potentially end up in lost+found, and
+@@ -262,8 +262,8 @@ things out may be dangerous.)
+ 		}
+ .SH FILES
+ .TP
+-.I /etc/e2fsck.conf
++.I /etc/@FSCKPROG@.conf
+ The configuration file for 
+-.BR e2fsck (8).
++.BR @FSCKPROG@ (8).
+ .SH SEE ALSO
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+Index: ldiskfsprogs/e2fsck/unix.c
+===================================================================
+--- ldiskfsprogs.orig/e2fsck/unix.c
++++ ldiskfsprogs/e2fsck/unix.c
+@@ -768,7 +768,7 @@ static void syntax_err_report(const char
+ 	exit(FSCK_ERROR);
+ }
+ 
+-static const char *config_fn[] = { ROOT_SYSCONFDIR "/e2fsck.conf", 0 };
++static const char *config_fn[] = { ROOT_SYSCONFDIR "/" FSCKPROG ".conf", 0 };
+ 
+ static errcode_t PRS(int argc, char *argv[], e2fsck_t *ret_ctx)
+ {
+@@ -812,7 +812,7 @@ static errcode_t PRS(int argc, char *arg
+ 	if (argc && *argv)
+ 		ctx->program_name = *argv;
+ 	else
+-		ctx->program_name = "e2fsck";
++		ctx->program_name = FSCKPROG;
+ 
+ 	if ((cp = getenv("E2FSCK_CONFIG")) != NULL)
+ 		config_fn[0] = cp;
+@@ -948,8 +948,8 @@ static errcode_t PRS(int argc, char *arg
+ 			else
+ 				ctx->options |= E2F_OPT_TIME;
+ #else
+-			fprintf(stderr, _("The -t option is not "
+-				"supported on this version of e2fsck.\n"));
++			fprintf(stderr, _("The -t option is not supported "
++				"on this version of %s.\n"), FSCKPROG);
+ #endif
+ 			break;
+ 		case 'c':
+@@ -1234,9 +1234,9 @@ check_error:
+ 		dump_mmp_msg(fs->mmp_buf, NULL);
+ 	} else if (retval == EXT2_ET_MMP_FSCK_ON) {
+ 		dump_mmp_msg(fs->mmp_buf,
+-			     _("If you are sure that e2fsck "
+-			       "is not running on any node then use "
+-			       "'tune2fs -f -E clear_mmp {device}'\n"));
++				_("If you are sure that " FSCKPROG " is not "
++				"running on any node then use '" TUNEFSPROG
++				" -f -E clear_mmp {device}'\n"));
+ 	} else if (retval == EXT2_ET_MMP_MAGIC_INVALID) {
+ 		if (fix_problem(ctx, PR_0_MMP_INVALID_MAGIC, &pctx))
+ 			ext2fs_mmp_clear(fs);
+@@ -1286,7 +1286,7 @@ int main (int argc, char *argv[])
+ 
+ 	retval = PRS(argc, argv, &ctx);
+ 	if (retval) {
+-		com_err("e2fsck", retval,
++		com_err(FSCKPROG, retval,
+ 			_("while trying to initialize program"));
+ 		exit(FSCK_ERROR);
+ 	}
+@@ -1294,7 +1294,7 @@ int main (int argc, char *argv[])
+ 
+ 	init_resource_track(&ctx->global_rtrack, NULL);
+ 	if (!(ctx->options & E2F_OPT_PREEN) || show_version_only)
+-		fprintf(stderr, "e2fsck %s (%s)\n", my_ver_string,
++		fprintf(stderr, "%s %s (%s)\n", FSCKPROG, my_ver_string,
+ 			 my_ver_date);
+ 
+ 	if (show_version_only) {
+@@ -1393,9 +1393,9 @@ failure:
+ 			ctx->filesystem_name);
+ 		if (retval == EXT2_ET_REV_TOO_HIGH) {
+ 			printf(_("The filesystem revision is apparently "
+-			       "too high for this version of e2fsck.\n"
++			       "too high for this version of %s.\n"
+ 			       "(Or the filesystem superblock "
+-			       "is corrupt)\n\n"));
++			       "is corrupt)\n\n"), FSCKPROG);
+ 			fix_problem(ctx, PR_0_SB_CORRUPT, &pctx);
+ 		} else if (retval == EXT2_ET_SHORT_READ)
+ 			printf(_("Could this be a zero-length partition?\n"));
+@@ -1477,7 +1477,7 @@ failure:
+ 			_("while trying to open %s"),
+ 			ctx->filesystem_name);
+ 	get_newer:
+-		fatal_error(ctx, _("Get a newer version of e2fsck!"));
++		fatal_error(ctx, _("Get a newer version of " FSCKPROG "!"));
+ 	}
+ 
+ 	/*
+@@ -1598,9 +1598,9 @@ print_unsupp_features:
+ #ifndef ENABLE_HTREE
+ 	if (sb->s_feature_compat & EXT2_FEATURE_COMPAT_DIR_INDEX) {
+ 		com_err(ctx->program_name, 0,
+-			_("E2fsck not compiled with HTREE support,\n\t"
++			_("%s not compiled with HTREE support,\n\t"
+ 			  "but filesystem %s has HTREE directories.\n"),
+-			ctx->device_name);
++			FSCKPROG, ctx->device_name);
+ 		goto get_newer;
+ 	}
+ #endif
+@@ -1760,8 +1760,8 @@ no_journal:
+ 		goto restart;
+ 	}
+ 	if (run_result & E2F_FLAG_CANCEL) {
+-		printf(_("%s: e2fsck canceled.\n"), ctx->device_name ?
+-		       ctx->device_name : ctx->filesystem_name);
++		printf(_("%s: %s canceled.\n"), ctx->device_name ?
++		       ctx->device_name : ctx->filesystem_name, FSCKPROG);
+ 		exit_value |= FSCK_CANCELED;
+ 	}
+ 	if (run_result & E2F_FLAG_ABORT)
+Index: ldiskfsprogs/e2fsprogs-RHEL-6.spec.in
+===================================================================
+--- ldiskfsprogs.orig/e2fsprogs-RHEL-6.spec.in
++++ ldiskfsprogs/e2fsprogs-RHEL-6.spec.in
+@@ -2,7 +2,7 @@
+ %define	_root_libdir	/%{_lib}
+ 
+ Summary: Utilities for managing ext2, ext3, and ext4 filesystems
+-Name: e2fsprogs
++Name: @E2FSPROGS@
+ Version: @E2FSPROGS_PKGVER@
+ Release: 7%{?dist}
+ 
+@@ -16,16 +16,17 @@ Source0: http://downloads.sourceforge.ne
+ #[AED] Patch2: e2fsprogs-1.41.12-e4defrag.patch
+ 
+ Url: http://downloads.whamcloud.com/public/
+-Provides:       ldiskfsprogs = %{version}
++@E2FSPROGS_CMT@Provides:       ldiskfsprogs = %{version}
+ @LFSCK_CMT@Requires: db4 >= @DB4VERSION@
+ @LFSCK_CMT@BuildRequires: db4-devel >= 4.1 texinfo
++@LFSCK_CMT@BuildRequires: lustre
+ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+-Requires: e2fsprogs-libs = %{version}-%{release}
++@E2FSPROGS_CMT@Requires: e2fsprogs-libs = %{version}-%{release}
+ 
+ # e4fsprogs was a parallel ext4-capable package in RHEL5.x
+ %if 0%{?rhel} > 0
+-Obsoletes: e4fsprogs < %{version}-%{release}
+-Provides: e4fsprogs = %{version}-%{release}
++@E2FSPROGS_CMT@Obsoletes: e4fsprogs < %{version}-%{release}
++@E2FSPROGS_CMT@Provides: e4fsprogs = %{version}-%{release}
+ %endif
+ 
+ BuildRequires: pkgconfig, texinfo, libselinux-devel
+@@ -34,18 +35,18 @@ BuildRequires: libblkid-devel
+ BuildRequires: libuuid-devel
+ 
+ %description
+-The e2fsprogs package contains a number of utilities for creating,
++The @E2FSPROGS@ package contains a number of utilities for creating,
+ checking, modifying, and correcting any inconsistencies in second,
+-third and fourth extended (ext2/ext3/ext4) filesystems. E2fsprogs
+-contains e2fsck (used to repair filesystem inconsistencies after an
++third and fourth extended (ext2/ext3/ext4) filesystems. @E2FSPROGS@
++contains @FSCKPROG@ (used to repair filesystem inconsistencies after an
+ unclean shutdown), mke2fs (used to initialize a partition to contain
+-an empty ext2 filesystem), debugfs (used to examine the internal
++an empty ext2 filesystem), @DEBUGFSPROG@ (used to examine the internal
+ structure of a filesystem, to manually repair a corrupted
+-filesystem, or to create test cases for e2fsck), tune2fs (used to
++filesystem, or to create test cases for @FSCKPROG@), @TUNEFSPROG@ (used to
+ modify filesystem parameters), and most of the other core ext2fs
+ filesystem utilities.
+ 
+-You should install the e2fsprogs package if you need to manage the
++You should install the @E2FSPROGS@ package if you need to manage the
+ performance of an ext2, ext3, or ext4 filesystem.
+ 
+ %package libs
+@@ -54,8 +55,8 @@ Group: Development/Libraries
+ License: GPLv2 and LGPLv2
+ 
+ %description libs
+-E2fsprogs-libs contains libe2p and libext2fs, the libraries of the
+-e2fsprogs package.
++@E2FSPROGS@-libs contains libe2p and libext2fs, the libraries of the
++@E2FSPROGS@ package.
+ 
+ These libraries are used to directly acccess ext2/3/4 filesystems
+ from userspace.
+@@ -66,7 +67,7 @@ Group: Development/Libraries
+ License: GPLv2 and LGPLv2
+ 
+ %description static
+-E2fsprogs-static contains all static libraries built from e2fsprogs,
++@E2FSPROGS@-static contains all static libraries built from @E2FSPROGS@,
+ including libext2fs, libcom_err, libe2p, and libss.
+ 
+ These libraries are used to directly acccess ext2/3/4 filesystems
+@@ -76,7 +77,7 @@ from userspace, and perform other useful
+ Summary: Ext2/3/4 filesystem-specific libraries and headers
+ Group: Development/Libraries
+ License: GPLv2 and LGPLv2
+-Requires: e2fsprogs-libs = %{version}-%{release}
++Requires: @E2FSPROGS@-libs = %{version}-%{release}
+ Requires: gawk
+ Requires: libcom_err-devel
+ Requires: pkgconfig
+@@ -84,13 +85,13 @@ Requires(post): info
+ Requires(preun): info
+ 
+ %description devel
+-E2fsprogs-devel contains the libraries and header files needed to
++@E2FSPROGS@-devel contains the libraries and header files needed to
+ develop second, third and fourth extended (ext2/ext3/ext4)
+ filesystem-specific programs.
+ 
+-You should install e2fsprogs-devel if you want to develop ext2/3/4
+-filesystem-specific programs. If you install e2fsprogs-devel, you'll
+-also want to install e2fsprogs.
++You should install @E2FSPROGS@-devel if you want to develop ext2/3/4
++filesystem-specific programs. If you install @E2FSPROGS@-devel, you'll
++also want to install @E2FSPROGS@.
+ 
+ %package -n libcom_err
+ Summary: Common error description library
+@@ -98,7 +99,7 @@ Group: Development/Libraries
+ License: MIT
+ 
+ %description -n libcom_err
+-This is the common error description library, part of e2fsprogs.
++This is the common error description library, part of @E2FSPROGS@.
+ 
+ libcom_err is an attempt to present a common error-handling mechanism.
+ 
+@@ -111,7 +112,7 @@ Requires: pkgconfig
+ 
+ %description -n libcom_err-devel
+ This is the common error description development library and headers,
+-part of e2fsprogs.  It contains the compile_et commmand, used
++part of @E2FSPROGS@.  It contains the compile_et commmand, used
+ to convert a table listing error-code names and associated messages
+ messages into a C source file suitable for use with the library.
+ 
+@@ -123,7 +124,7 @@ Group: Development/Libraries
+ License: MIT
+ 
+ %description -n libss
+-This is libss, a command line interface parsing library, part of e2fsprogs.
++This is libss, a command line interface parsing library, part of @E2FSPROGS@.
+ 
+ This package includes a tool that parses a command table to generate
+ a simple command-line interface parser, the include files needed to
+@@ -140,7 +141,7 @@ Requires: pkgconfig
+ 
+ %description -n libss-devel
+ This is the command line interface parsing (libss) development library
+-and headers, part of e2fsprogs.  It contains the mk_cmds command, which
++and headers, part of @E2FSPROGS@.  It contains the mk_cmds command, which
+ parses a command table to generate a simple command-line interface parser.
+ 
+ It was originally inspired by the Multics SubSystem library.
+@@ -165,7 +166,10 @@ make %{?_smp_mflags}
+ %install
+ rm -rf %{buildroot}
+ export PATH=/sbin:$PATH
+-make install install-libs DESTDIR=%{buildroot} INSTALL="%{__install} -p" \
++make install DESTDIR=%{buildroot} INSTALL="%{__install} -p" \
++	root_sbindir=%{_root_sbindir} root_libdir=%{_root_libdir}
++%if %{name} == "e2fsprogs"
++make install-libs DESTDIR=%{buildroot} INSTALL="%{__install} -p" \
+ 	root_sbindir=%{_root_sbindir} root_libdir=%{_root_libdir}
+ 
+ # ugly hack to allow parallel install of 32-bit and 64-bit -devel packages:
+@@ -180,11 +184,12 @@ mv -f %{buildroot}%{_includedir}/ext2fs/
+ 
+ # Hack for now, otherwise strip fails.
+ chmod +w %{buildroot}%{_libdir}/*.a
++%endif
+ 
+ %find_lang %{name}
+ 
+ %check
+-make check
++#make check
+ 
+ %clean
+ rm -rf %{buildroot}
+@@ -214,65 +219,70 @@ exit 0
+ %defattr(-,root,root)
+ %doc COPYING README RELEASE-NOTES
+ 
+-%config(noreplace) /etc/mke2fs.conf
++%config(noreplace) /etc/@MKFSPROG@.conf
++%if %{name} == "e2fsprogs"
+ %{_root_sbindir}/badblocks
+-%{_root_sbindir}/debugfs
+-%{_root_sbindir}/dumpe2fs
+-%{_root_sbindir}/e2fsck
+-%{_root_sbindir}/e2image
+-%{_root_sbindir}/e2label
+ %{_root_sbindir}/e2undo
+ %{_root_sbindir}/fsck.ext2
+ %{_root_sbindir}/fsck.ext3
+ %{_root_sbindir}/fsck.ext4
+ %{_root_sbindir}/fsck.ext4dev
+ %{_root_sbindir}/logsave
+-%{_root_sbindir}/mke2fs
+ %{_root_sbindir}/mkfs.ext2
+ %{_root_sbindir}/mkfs.ext3
+ %{_root_sbindir}/mkfs.ext4
+ %{_root_sbindir}/mkfs.ext4dev
+-%{_root_sbindir}/resize2fs
+-%{_root_sbindir}/tune2fs
+ %{_sbindir}/filefrag
+ %{_sbindir}/e2freefrag
+-@E2SCAN_CMT@%{_sbindir}/e2scan
+-@LFSCK_CMT@%{_sbindir}/lfsck
+ %{_sbindir}/mklost+found
+-
+ %{_bindir}/chattr
+ %{_bindir}/lsattr
+ %{_mandir}/man1/chattr.1*
+ %{_mandir}/man1/lsattr.1*
+-
+-%{_mandir}/man5/e2fsck.conf.5*
+-%{_mandir}/man5/mke2fs.conf.5*
+-
+ %{_mandir}/man8/badblocks.8*
+-%{_mandir}/man8/debugfs.8*
+-%{_mandir}/man8/dumpe2fs.8*
+-%{_mandir}/man8/e2fsck.8*
+ %{_mandir}/man8/filefrag.8*
+ %{_mandir}/man8/e2freefrag.8*
+ %{_mandir}/man8/fsck.ext2.8*
+ %{_mandir}/man8/fsck.ext3.8*
+ %{_mandir}/man8/fsck.ext4.8*
+ %{_mandir}/man8/fsck.ext4dev.8*
+-%{_mandir}/man8/e2image.8*
+-%{_mandir}/man8/e2label.8*
+-@E2SCAN_CMT@%{_mandir}/man8/e2scan.8*
+ %{_mandir}/man8/e2undo.8*
+-@LFSCK_CMT@%{_mandir}/man8/lfsck.8*
+ %{_mandir}/man8/logsave.8*
+-%{_mandir}/man8/mke2fs.8*
+ %{_mandir}/man8/mkfs.ext2.8*
+ %{_mandir}/man8/mkfs.ext3.8*
+ %{_mandir}/man8/mkfs.ext4.8*
+ %{_mandir}/man8/mkfs.ext4dev.8*
+ %{_mandir}/man8/mklost+found.8*
+-%{_mandir}/man8/resize2fs.8*
+-%{_mandir}/man8/tune2fs.8*
++%else
++%{_root_sbindir}/@PFSCKPROG@
++%{_mandir}/man8/@PFSCKPROG@.8*
++%endif
++
++%{_root_sbindir}/@DEBUGFSPROG@
++%{_root_sbindir}/@DUMPFSPROG@
++%{_root_sbindir}/@FSCKPROG@
++%{_root_sbindir}/@IMAGEPROG@
++%{_root_sbindir}/@LABELPROG@
++%{_root_sbindir}/@MKFSPROG@
++%{_root_sbindir}/@RESIZEFSPROG@
++%{_root_sbindir}/@TUNEFSPROG@
++@LFSCK_CMT@%{_sbindir}/lfsck
++@E2SCAN_CMT@%{_sbindir}/@SCANPROG@
+ 
++%{_mandir}/man5/@FSCKPROG@.conf.5*
++%{_mandir}/man5/@MKFSPROG@.conf.5*
++%{_mandir}/man8/@DEBUGFSPROG@.8*
++%{_mandir}/man8/@DUMPFSPROG@.8*
++%{_mandir}/man8/@FSCKPROG@.8*
++%{_mandir}/man8/@IMAGEPROG@.8*
++%{_mandir}/man8/@LABELPROG@.8*
++@LFSCK_CMT@%{_mandir}/man8/lfsck.8*
++@E2SCAN_CMT@%{_mandir}/man8/@SCANPROG@.8*
++%{_mandir}/man8/@MKFSPROG@.8*
++%{_mandir}/man8/@RESIZEFSPROG@.8*
++%{_mandir}/man8/@TUNEFSPROG@.8*
++
++%if %{name} == "e2fsprogs"
+ %files libs
+ %defattr(-,root,root)
+ %doc COPYING
+@@ -324,6 +334,7 @@ exit 0
+ %{_includedir}/ss
+ %{_mandir}/man1/mk_cmds.1*
+ %{_libdir}/pkgconfig/ss.pc
++%endif
+ 
+ %changelog
+ * Tue Feb 08 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org>  1.41.14-2
+Index: ldiskfsprogs/e2fsprogs.spec.in
+===================================================================
+--- ldiskfsprogs.orig/e2fsprogs.spec.in
++++ ldiskfsprogs/e2fsprogs.spec.in
+@@ -4,7 +4,7 @@
+ %define	_root_etcdir	/etc
+ 
+ Summary: Utilities for managing ext2/ext3/ext4 filesystems
+-Name: e2fsprogs
++Name: @E2FSPROGS@
+ Version: @E2FSPROGS_PKGVER@
+ Release: 0%{_vendor}
+ License: GPLv2 and LGPLv2
+Index: ldiskfsprogs/e2scan/Makefile.in
+===================================================================
+--- ldiskfsprogs.orig/e2scan/Makefile.in
++++ ldiskfsprogs/e2scan/Makefile.in
+@@ -12,8 +12,8 @@ SQLITE3_LIB = @SQLITE3_LIB@
+ 
+ @MCONFIG@
+ 
+-PROGS=		e2scan
+-MANPAGES=	e2scan.8
++PROGS=		@SCANPROG@
++MANPAGES=	@SCANPROG@.8
+ 
+ MK_CMDS=	_SS_DIR_OVERRIDE=../lib/ss ../lib/ss/mk_cmds
+ 
+@@ -31,12 +31,12 @@ DEPLIBS=$(LIBEXT2FS) $(LIBE2P) $(LIBSS) 
+ 
+ all:: $(PROGS) $(MANPAGES)
+ 
+-e2scan: $(E2SCAN_OBJS) $(DEPLIBS)
+-	@$(CC) $(ALL_LDFLAGS) -o e2scan $(E2SCAN_OBJS) $(LIBS)
++@SCANPROG@: $(E2SCAN_OBJS) $(DEPLIBS)
++	@$(CC) $(ALL_LDFLAGS) -o @SCANPROG@ $(E2SCAN_OBJS) $(LIBS)
+ 
+-e2scan.8: $(DEP_SUBSTITUTE) $(srcdir)/e2scan.8.in
++@SCANPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/e2scan.8.in
+ 	@echo "	SUBST $@"
+-	@$(SUBSTITUTE_UPTIME) $(srcdir)/e2scan.8.in e2scan.8
++	@$(SUBSTITUTE_UPTIME) $(srcdir)/e2scan.8.in @SCANPROG@.8
+ 
+ installdirs:
+ 	@echo "	MKINSTALLDIRS $(sbindir) $(man8dir)"
+Index: ldiskfsprogs/e2scan/e2scan.8.in
+===================================================================
+--- ldiskfsprogs.orig/e2scan/e2scan.8.in
++++ ldiskfsprogs/e2scan/e2scan.8.in
+@@ -1,9 +1,9 @@
+-.TH e2scan 1 "2006 Sep 26" Lustre "backup utilities"
++.TH @SCANPROG@ 1 "2006 Sep 26" Lustre "backup utilities"
+ .SH NAME
+-e2scan \- scan an Ext2-type filesystem for modified inodes
++@SCANPROG@ \- scan an Ext2-type filesystem for modified inodes
+ .SH SYNOPSIS
+ .br
+-.B e2scan
++.B @SCANPROG@
+ @E2SCAN_MAN@{
+ .B -l
+ @E2SCAN_MAN@|
+@@ -27,7 +27,7 @@ e2scan \- scan an Ext2-type filesystem f
+ .I device
+ .br
+ .SH DESCRIPTION
+-.BR e2scan ,
++.BR @SCANPROG@ ,
+ iterates all inodes on
+ .IR device ,
+ find inodes modified since the specified time (default 1 day), and prints
+@@ -37,7 +37,7 @@ pathnames to be used as input to a backu
+ as the filesystem may be mounted at an arbitrary mountpoint.
+ 
+ The
+-.B e2scan
++.B @SCANPROG@
+ program is optimized for scanning an entire filesystem for (modified) files,
+ but is not efficient for smaller subdirectory scans.  Use
+ .BR find (1)
+@@ -101,15 +101,15 @@ instead of the default standard output.
+ To dump all of the files in the filesystem into the file
+ .IR myfilelist :
+ .IP
+-e2scan -N 0 -o myfilelist /dev/sdb1
++@SCANPROG@ -N 0 -o myfilelist /dev/sdb1
+ .PP
+ To list files and directories newer than Feb 6, 2007 in the /home directory:
+ .IP
+-e2scan -D -N "Feb 6 00:00:00 2007" -C /home /dev/sdb1
++@SCANPROG@ -D -N "Feb 6 00:00:00 2007" -C /home /dev/sdb1
+ .PP
+ .SH AUTHOR
+ This version of
+-.B e2scan
++.B @SCANPROG@
+ was originally written by Vladimir Saviliev <vladimir.saviliev@sun.com>
+ and Andreas Dilger <adilger@whamcloud.com>.
+ .SH SEE ALSO
+Index: ldiskfsprogs/e2scan/e2scan.c
+===================================================================
+--- ldiskfsprogs.orig/e2scan/e2scan.c
++++ ldiskfsprogs/e2scan/e2scan.c
+@@ -14,7 +14,7 @@
+ #include <sys/errno.h>
+ 
+ ext2_filsys fs;
+-const char *database = "e2scan.db";
++const char *database = SCANPROG".db";
+ int readahead_groups = 1; /* by default readahead one group inode table */
+ FILE *outfile;
+ 
+Index: ldiskfsprogs/misc/Makefile.in
+===================================================================
+--- ldiskfsprogs.orig/misc/Makefile.in
++++ ldiskfsprogs/misc/Makefile.in
+@@ -14,8 +14,8 @@ INSTALL = @INSTALL@
+ @DEFRAG_CMT@@LINUX_CMT@E4DEFRAG_PROG= e4defrag
+ @DEFRAG_CMT@@LINUX_CMT@E4DEFRAG_MAN= e4defrag.8
+ 
+-@IMAGER_CMT@E2IMAGE_PROG= e2image
+-@IMAGER_CMT@E2IMAGE_MAN= e2image.8
++@IMAGER_CMT@E2IMAGE_PROG= @IMAGEPROG@
++@IMAGER_CMT@E2IMAGE_MAN= @IMAGEPROG@.8
+ 
+ @UUIDD_CMT@UUIDD_PROG= uuidd
+ @UUIDD_CMT@UUIDD_MAN= uuidd.8
+@@ -26,20 +26,30 @@ INSTALL = @INSTALL@
+ @BLKID_CMT@FINDFS_LINK= findfs
+ @BLKID_CMT@FINDFS_MAN= findfs.8
+ 
+-SPROGS=		mke2fs badblocks tune2fs dumpe2fs $(BLKID_PROG) logsave \
+-			$(E2IMAGE_PROG) @FSCK_PROG@ e2undo
++SPROGS_COMMON=	@MKFSPROG@ @TUNEFSPROG@ @DUMPFSPROG@ $(E2IMAGE_PROG) \
++		@LDISKFSPROGS_CMT@ @PFSCKPROG@
++SPROGS_E2FSPROGS= \
++		badblocks $(BLKID_PROG) logsave e2undo
++SPROGS=		$(SPROGS_COMMON) $(SPROGS_E2FSPROGS)
+ USPROGS=	mklost+found filefrag e2freefrag $(UUIDD_PROG) $(E4DEFRAG_PROG)
+-SMANPAGES=	tune2fs.8 mklost+found.8 mke2fs.8 dumpe2fs.8 badblocks.8 \
+-			e2label.8 $(FINDFS_MAN) $(BLKID_MAN) $(E2IMAGE_MAN) \
+-			logsave.8 filefrag.8 e2freefrag.8 e2undo.8 \
+-			$(UUIDD_MAN) $(E4DEFRAG_MAN) @FSCK_MAN@
+-FMANPAGES=	mke2fs.conf.5
++SMANPAGES_COMMON= \
++		@TUNEFSPROG@.8 @MKFSPROG@.8 @DUMPFSPROG@.8 @LABELPROG@.8 \
++		$(E2IMAGE_MAN) @LDISKFSPROGS_CMT@ @PFSCKPROG@.8
++SMANPAGES_E2FSPROGS= \
++		mklost+found.8 badblocks.8 $(FINDFS_MAN) $(BLKID_MAN) \
++		logsave.8 filefrag.8 e2freefrag.8 e2undo.8 \
++		$(UUIDD_MAN) $(E4DEFRAG_MAN)
++SMANPAGES=	$(SMANPAGES_COMMON) $(SMANPAGES_E2FSPROGS)
++
++FMANPAGES=	@MKFSPROG@.conf.5
+ 
+ UPROGS=		chattr lsattr @UUID_CMT@ uuidgen
+ UMANPAGES=	chattr.1 lsattr.1 @UUID_CMT@ uuidgen.1
+ 
+ LPROGS=		@E2INITRD_PROG@
+ 
++CONFFILES=	@MKFSPROG@.conf
++
+ TUNE2FS_OBJS=	tune2fs.o util.o
+ MKLPF_OBJS=	mklost+found.o
+ MKE2FS_OBJS=	mke2fs.o util.o profile.o prof_err.o default_profile.o
+@@ -104,7 +114,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compil
+ @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+ 
+ all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
+-	$(FMANPAGES) $(LPROGS) $(E4DEFRAG_PROG)
++	$(FMANPAGES) $(LPROGS) $(E4DEFRAG_PROG) $(CONFFILES)
+ 
+ @PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.profiled \
+ 	e2undo.profiled mke2fs.profiled dumpe2fs.profiled fsck.profiled \
+@@ -119,9 +129,9 @@ prof_err.c prof_err.h: $(srcdir)/../e2fs
+ 	$(E) "	COMPILE_ET prof_err.et"
+ 	$(Q) $(COMPILE_ET) $(srcdir)/../e2fsck/prof_err.et
+ 
+-default_profile.c: $(srcdir)/mke2fs.conf $(srcdir)/profile-to-c.awk
+-	$(E) "	PROFILE_TO_C mke2fs.conf"
+-	$(Q) $(AWK) -f $(srcdir)/profile-to-c.awk < $(srcdir)/mke2fs.conf \
++default_profile.c: $(srcdir)/@MKFSPROG@.conf $(srcdir)/profile-to-c.awk
++	$(E) "	PROFILE_TO_C @MKFSPROG@.conf"
++	$(Q) $(AWK) -f $(srcdir)/profile-to-c.awk < $(srcdir)/@MKFSPROG@.conf \
+ 		>  default_profile.c
+ profile.o:
+ 	$(E) "	CC $<"
+@@ -142,10 +152,10 @@ e2initrd_helper: e2initrd_helper.o $(DEP
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o e2initrd_helper e2initrd_helper.o $(LIBS) \
+ 		$(LIBBLKID) $(LIBEXT2FS) $(LIBINTL)
+ 
+-tune2fs: $(TUNE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBBLKID) \
++@TUNEFSPROG@: $(TUNE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBBLKID) \
+ 		$(DEPLIBUUID) $(LIBEXT2FS) 
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o tune2fs $(TUNE2FS_OBJS) $(LIBS) \
++	$(Q) $(CC) $(ALL_LDFLAGS) -o @TUNEFSPROG@ $(TUNE2FS_OBJS) $(LIBS) \
+ 		$(LIBBLKID) $(LIBUUID) $(LIBEXT2FS) $(LIBS_E2P) $(LIBINTL)
+ 
+ tune2fs.static: $(TUNE2FS_OBJS) $(STATIC_DEPLIBS) $(STATIC_LIBE2P) $(DEPSTATIC_LIBBLKID)
+@@ -178,9 +188,9 @@ blkid.profiled: $(PROFILED_BLKID_OBJS) $
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o blkid.profiled $(PROFILED_BLKID_OBJS) \
+ 		$(PROFILED_LIBBLKID) $(LIBINTL) $(PROFILED_LIBEXT2FS)
+ 
+-e2image: $(E2IMAGE_OBJS) $(DEPLIBS)
++@IMAGEPROG@: $(E2IMAGE_OBJS) $(DEPLIBS)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o e2image $(E2IMAGE_OBJS) $(LIBS) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o @IMAGEPROG@ $(E2IMAGE_OBJS) $(LIBS) $(LIBINTL)
+ 
+ e2image.profiled: $(PROFILED_E2IMAGE_OBJS) $(PROFILED_DEPLIBS)
+ 	$(E) "	LD $@"
+@@ -218,10 +228,10 @@ mklost+found: $(MKLPF_OBJS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -o mklost+found $(MKLPF_OBJS) $(LIBINTL)
+ 
+-mke2fs: $(MKE2FS_OBJS) $(DEPLIBS) $(LIBE2P) $(DEPLIBBLKID) $(DEPLIBUUID) \
++@MKFSPROG@: $(MKE2FS_OBJS) $(DEPLIBS) $(LIBE2P) $(DEPLIBBLKID) $(DEPLIBUUID) \
+ 		$(LIBEXT2FS) 
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o mke2fs $(MKE2FS_OBJS) $(LIBS) $(LIBBLKID) \
++	$(Q) $(CC) $(ALL_LDFLAGS) -o @MKFSPROG@ $(MKE2FS_OBJS) $(LIBS) $(LIBBLKID) \
+ 		$(LIBUUID) $(LIBEXT2FS) $(LIBE2P) $(LIBINTL)
+ 
+ mke2fs.static: $(MKE2FS_OBJS) $(STATIC_DEPLIBS) $(STATIC_LIBE2P) $(DEPSTATIC_LIBUUID) $(DEPSTATIC_LIBBLKID)
+@@ -264,9 +274,9 @@ uuidd.profiled: $(PROFILED_UUIDD_OBJS) $
+ 	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o uuidd.profiled $(PROFILED_UUIDD_OBJS) \
+ 		$(PROFILED_LIBUUID) $(LIBINTL)
+ 
+-dumpe2fs: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID)
++@DUMPFSPROG@: $(DUMPE2FS_OBJS) $(DEPLIBS) $(DEPLIBS_E2P) $(DEPLIBUUID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o dumpe2fs $(DUMPE2FS_OBJS) $(LIBS) \
++	$(Q) $(CC) $(ALL_LDFLAGS) -o @DUMPFSPROG@ $(DUMPE2FS_OBJS) $(LIBS) \
+ 		$(LIBS_E2P) $(LIBUUID) $(LIBINTL)
+ 
+ dumpe2fs.profiled: $(PROFILED_DUMPE2FS_OBJS) $(PROFILED_DEPLIBS) \
+@@ -276,14 +286,14 @@ dumpe2fs.profiled: $(PROFILED_DUMPE2FS_O
+ 		$(PROFILED_DUMPE2FS_OBJS) $(PROFILED_LIBS) \
+ 		$(PROFILED_LIBE2P) $(PROFILED_LIBUUID) $(LIBINTL)
+ 
+-fsck: $(FSCK_OBJS) $(DEPLIBBLKID)
++@PFSCKPROG@: $(FSCK_OBJS) $(DEPLIBBLKID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o fsck $(FSCK_OBJS) $(LIBBLKID) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -o @PFSCKPROG@ $(FSCK_OBJS) $(LIBBLKID) $(LIBINTL)
+ 
+ fsck.profiled: $(PROFILED_FSCK_OBJS) $(PROFILED_DEPLIBBLKID)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o fsck.profiled $(PROFILED_FSCK_OBJS) \
+-		$(PROFILED_LIBBLKID) $(LIBINTL)
++	$(Q) $(CC) $(ALL_LDFLAGS) -g -pg -o fsck.profiled \
++		$(PROFILED_FSCK_OBJS) $(PROFILED_LIBBLKID) $(LIBINTL)
+ 
+ badblocks: $(BADBLOCKS_OBJS) $(DEPLIBS)
+ 	$(E) "	LD $@"
+@@ -320,25 +330,25 @@ tst_ismounted: $(srcdir)/ismounted.c $(S
+ 	$(CC) -o tst_ismounted $(srcdir)/ismounted.c -DDEBUG $(ALL_CFLAGS) \
+ 		$(LIBCOM_ERR)
+ 
+-tune2fs.8: $(DEP_SUBSTITUTE) $(srcdir)/tune2fs.8.in
++@TUNEFSPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/tune2fs.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/tune2fs.8.in tune2fs.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/tune2fs.8.in @TUNEFSPROG@.8
+ 
+ mklost+found.8: $(DEP_SUBSTITUTE) $(srcdir)/mklost+found.8.in
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/mklost+found.8.in mklost+found.8
+ 
+-mke2fs.8: $(DEP_SUBSTITUTE) $(srcdir)/mke2fs.8.in
++@MKFSPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/mke2fs.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/mke2fs.8.in mke2fs.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/mke2fs.8.in @MKFSPROG@.8
+ 
+-mke2fs.conf.5: $(DEP_SUBSTITUTE) $(srcdir)/mke2fs.conf.5.in
++@MKFSPROG@.conf.5: $(DEP_SUBSTITUTE) $(srcdir)/mke2fs.conf.5.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/mke2fs.conf.5.in mke2fs.conf.5
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/mke2fs.conf.5.in @MKFSPROG@.conf.5
+ 
+-e2label.8: $(DEP_SUBSTITUTE) $(srcdir)/e2label.8.in
++@LABELPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/e2label.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2label.8.in e2label.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2label.8.in @LABELPROG@.8
+ 
+ e2undo.8: $(DEP_SUBSTITUTE) $(srcdir)/e2undo.8.in
+ 	$(E) "	SUBST $@"
+@@ -348,25 +358,25 @@ findfs.8: $(DEP_SUBSTITUTE) $(srcdir)/fi
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/findfs.8.in findfs.8
+ 
+-e2image.8: $(DEP_SUBSTITUTE) $(srcdir)/e2image.8.in
++@IMAGEPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/e2image.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2image.8.in e2image.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e2image.8.in @IMAGEPROG@.8
+ 
+ e4defrag.8: $(DEP_SUBSTITUTE) $(srcdir)/e4defrag.8.in
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/e4defrag.8.in e4defrag.8
+ 
+-dumpe2fs.8: $(DEP_SUBSTITUTE) $(srcdir)/dumpe2fs.8.in 
++@DUMPFSPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/dumpe2fs.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/dumpe2fs.8.in dumpe2fs.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/dumpe2fs.8.in @DUMPFSPROG@.8
+ 
+ badblocks.8: $(DEP_SUBSTITUTE) $(srcdir)/badblocks.8.in
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/badblocks.8.in badblocks.8	
+ 
+-fsck.8: $(DEP_SUBSTITUTE) $(srcdir)/fsck.8.in
++@PFSCKPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/fsck.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/fsck.8.in fsck.8 
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/fsck.8.in @PFSCKPROG@.8
+ 
+ blkid.8: $(DEP_SUBSTITUTE) $(srcdir)/blkid.8.in
+ 	$(E) "	SUBST $@"
+@@ -404,6 +414,10 @@ filefrag.8: $(DEP_SUBSTITUTE) $(srcdir)/
+ 	$(E) "	SUBST $@"
+ 	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/filefrag.8.in filefrag.8
+ 
++@MKFSPROG@.conf: $(DEP_SUBSTITUE) $(srcdir)/mke2fs.conf.in
++	$(E) "	SUBST $@"
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/mke2fs.conf.in @MKFSPROG@.conf
++
+ installdirs:
+ 	$(E) "	MKINSTALLDIRS $(sbindir) $(root_sbindir) $(bindir) $(man1dir) $(man8dir) $(libdir) $(root_sysconfdir)"
+ 	$(Q) $(MKINSTALLDIRS) $(DESTDIR)$(sbindir) \
+@@ -412,8 +426,64 @@ installdirs:
+ 		$(DESTDIR)$(man1dir) $(DESTDIR)$(man5dir) \
+ 		$(DESTDIR)$(libdir) $(DESTDIR)/$(root_sysconfdir)
+ 
+-install: all $(SMANPAGES) $(UMANPAGES) installdirs
+-	$(Q) for i in $(SPROGS); do \
++
++install: install_@E2FSPROGS@
++
++install_common: all $(SMANPAGES) $(UMANPAGES) installdirs
++	$(Q) for i in $(SPROGS_COMMON); do \
++		echo "	INSTALL $(root_sbindir)/$$i"; \
++		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(root_sbindir)/$$i; \
++	done
++	$(E) "	LINK $(root_sbindir)/@LABELPROG@"
++	$(Q) $(LN) -f $(DESTDIR)$(root_sbindir)/@TUNEFSPROG@ \
++		$(DESTDIR)$(root_sbindir)/@LABELPROG@
++	$(Q) for i in $(SMANPAGES_COMMON); do \
++		for j in $(COMPRESS_EXT); do \
++			$(RM) -f $(DESTDIR)$(man8dir)/$$i.$$j; \
++		done; \
++		echo "	INSTALL_DATA $(man8dir)/$$i"; \
++		$(INSTALL_DATA) $$i $(DESTDIR)$(man8dir)/$$i; \
++	done
++	$(Q) for i in $(FMANPAGES); do \
++		for j in $(COMPRESS_EXT); do \
++			$(RM) -f $(DESTDIR)$(man5dir)/$$i.$$j; \
++		done; \
++		echo "	INSTALL_DATA $(man5dir)/$$i"; \
++		$(INSTALL_DATA) $$i $(DESTDIR)$(man5dir)/$$i; \
++	done
++	$(Q) if test -f $(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf; then \
++		if cmp -s $(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf \
++			$(srcdir)/mke2fs.conf; then \
++			true; \
++		else \
++			if grep -q ext4dev $(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf ; then \
++				echo "	INSTALL_DATA $(root_sysconfdir)/@MKFSPROG@.conf.@E2FSPROGS@-new"; \
++				$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
++					$(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf.@E2FSPROGS@-new; \
++				echo "Warning: installing @MKFSPROG@.conf in $(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf.@E2FSPROGS@-new"; \
++				echo "Check to see if you need to update your $(root_sysconfdir)/@MKFSPROG@.conf"; \
++			else \
++				echo "	INSTALL_DATA $(root_sysconfdir)/@MKFSPROG@.conf"; \
++				mv $(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf \
++				   $(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf.@E2FSPROGS@-old; \
++				$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
++					$(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf; \
++				echo "Your @MKFSPROG@.conf is too old.  Backing up old version in"; \
++				echo "$(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf.@E2FSPROGS@-old.  Please check to see"; \
++				echo "if you have any local customizations that you wish to preserve."; \
++			fi; \
++			echo " "; \
++		fi; \
++	else \
++		echo "	INSTALL_DATA $(root_sysconfdir)/@MKFSPROG@.conf"; \
++		$(INSTALL_DATA) $(srcdir)/@MKFSPROG@.conf \
++			$(DESTDIR)$(root_sysconfdir)/@MKFSPROG@.conf; \
++	fi
++
++install_ldiskfsprogs: install_common
++
++install_e2fsprogs: install_common
++	$(Q) for i in $(SPROGS_E2FSPROGS); do \
+ 		echo "	INSTALL $(root_sbindir)/$$i"; \
+ 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(root_sbindir)/$$i; \
+ 	done
+@@ -426,8 +496,6 @@ install: all $(SMANPAGES) $(UMANPAGES) i
+ 		(cd $(DESTDIR)$(root_sbindir); \
+ 			$(LN) $(LINK_INSTALL_FLAGS) mke2fs mkfs.$$i); \
+ 	done
+-	$(Q) (cd $(DESTDIR)$(root_sbindir); \
+-		$(LN) $(LINK_INSTALL_FLAGS) tune2fs e2label)
+ 	$(Q) if test -n "$(FINDFS_LINK)"; then \
+ 		echo "	LINK $(root_sbindir)/findfs"; \
+ 		(cd $(DESTDIR)$(root_sbindir); \
+@@ -441,7 +509,7 @@ install: all $(SMANPAGES) $(UMANPAGES) i
+ 		echo "	INSTALL $(libdir)/$$i"; \
+ 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(libdir)/$$i; \
+ 	done
+-	$(Q) for i in $(SMANPAGES); do \
++	$(Q) for i in $(SMANPAGES_E2FSPROGS); do \
+ 		for j in $(COMPRESS_EXT); do \
+ 			$(RM) -f $(DESTDIR)$(man8dir)/$$i.$$j; \
+ 		done; \
+@@ -462,41 +530,6 @@ install: all $(SMANPAGES) $(UMANPAGES) i
+ 		echo "	INSTALL_DATA $(man1dir)/$$i"; \
+ 		$(INSTALL_DATA) $$i $(DESTDIR)$(man1dir)/$$i; \
+ 	done
+-	$(Q) for i in $(FMANPAGES); do \
+-		for j in $(COMPRESS_EXT); do \
+-			$(RM) -f $(DESTDIR)$(man5dir)/$$i.$$j; \
+-		done; \
+-		echo "	INSTALL_DATA $(man5dir)/$$i"; \
+-		$(INSTALL_DATA) $$i $(DESTDIR)$(man5dir)/$$i; \
+-	done
+-	$(Q) if test -f $(DESTDIR)$(root_sysconfdir)/mke2fs.conf; then \
+-		if cmp -s $(DESTDIR)$(root_sysconfdir)/mke2fs.conf \
+-			$(srcdir)/mke2fs.conf; then \
+-			true; \
+-		else \
+-			if grep -q ext4dev $(DESTDIR)$(root_sysconfdir)/mke2fs.conf ; then \
+-				echo "	INSTALL_DATA $(root_sysconfdir)/mke2fs.conf.e2fsprogs-new"; \
+-				$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
+-					$(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-new; \
+-				echo "Warning: installing mke2fs.conf in $(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-new"; \
+-				echo "Check to see if you need to update your $(root_sysconfdir)/mke2fs.conf"; \
+-			else \
+-				echo "	INSTALL_DATA $(root_sysconfdir)/mke2fs.conf"; \
+-				mv $(DESTDIR)$(root_sysconfdir)/mke2fs.conf \
+-				   $(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-old; \
+-				$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
+-					$(DESTDIR)$(root_sysconfdir)/mke2fs.conf; \
+-				echo "Your mke2fs.conf is too old.  Backing up old version in"; \
+-				echo "$(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-old.  Please check to see"; \
+-				echo "if you have any local customizations that you wish to preserve."; \
+-			fi; \
+-			echo " "; \
+-		fi; \
+-	else \
+-		echo "	INSTALL_DATA $(root_sysconfdir)/mke2fs.conf"; \
+-		$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
+-			$(DESTDIR)$(root_sysconfdir)/mke2fs.conf; \
+-	fi
+ 
+ install-strip: install
+ 	$(Q) for i in $(SPROGS); do \
+@@ -541,13 +574,13 @@ uninstall:
+ 	for i in $(FMANPAGES); do \
+ 		$(RM) -f $(DESTDIR)$(man5dir)/$$i; \
+ 	done
+-	if cmp -s $(srcdir)/mke2fs.conf $(DESTDIR)/$(root_sysconfdir)/mke2fs.conf; then \
+-		$(RM) $(DESTDIR)/$(root_sysconfdir)/mke2fs.conf; \
++	if cmp -s $(srcdir)/mke2fs.conf $(DESTDIR)/$(root_sysconfdir)/@MKFSPROG@.conf; then \
++		$(RM) $(DESTDIR)/$(root_sysconfdir)/@MKFSPROG@.conf; \
+ 	fi
+ 
+ clean:
+ 	$(RM) -f $(SPROGS) $(USPROGS) $(UPROGS) $(UMANPAGES) $(SMANPAGES) \
+-		$(FMANPAGES) \
++		$(FMANPAGES) $(CONFFILES) \
+ 		base_device base_device.out mke2fs.static filefrag e2freefrag \
+ 		e2initrd_helper partinfo prof_err.[ch] default_profile.c \
+ 		uuidd e2image tune2fs.static tst_ismounted fsck.profiled \
+Index: ldiskfsprogs/misc/dumpe2fs.8.in
+===================================================================
+--- ldiskfsprogs.orig/misc/dumpe2fs.8.in
++++ ldiskfsprogs/misc/dumpe2fs.8.in
+@@ -2,11 +2,11 @@
+ .\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH DUMPE2FS 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @DUMPFSPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-dumpe2fs \- dump ext2/ext3/ext4 filesystem information
++@DUMPFSPROG@ \- dump ext2/ext3/ext4 filesystem information
+ .SH SYNOPSIS
+-.B dumpe2fs
++.B @DUMPFSPROG@
+ [
+ .B \-bfhixV
+ ]
+@@ -18,12 +18,12 @@ dumpe2fs \- dump ext2/ext3/ext4 filesyst
+ ]
+ .I device
+ .SH DESCRIPTION
+-.B dumpe2fs
++.B @DUMPFSPROG@
+ prints the super block and blocks group information for the filesystem
+ present on
+ .I device.
+ .PP
+-.B dumpe2fs
++.B @DUMPFSPROG@
+ is similar to Berkeley's
+ .B dumpfs
+ program for the BSD Fast File System.
+@@ -47,9 +47,9 @@ This option is not usually needed except
+ is examining the remains of a very badly corrupted filesystem.
+ .TP
+ .B \-f
+-force dumpe2fs to display a filesystem even though it may have some 
+-filesystem feature flags which dumpe2fs may not understand (and which
+-can cause some of dumpe2fs's display to be suspect).
++force @DUMPFSPROG@ to display a filesystem even though it may have some
++filesystem feature flags which @DUMPFSPROG@ may not understand (and which
++can cause some of @DUMPFSPROG@'s display to be suspect).
+ .TP 
+ .B \-h
+ only display the superblock information and not any of the block
+@@ -67,21 +67,20 @@ print the detailed group information blo
+ .TP
+ .B \-V
+ print the version number of 
+-.B dumpe2fs
++.B @DUMPFSPROG@
+ and exit.
+ .SH BUGS
+ You need to know the physical filesystem structure to understand the
+ output.
+ .SH AUTHOR
+-.B dumpe2fs 
++.B @DUMPFSPROG@
+ was written by Remy Card <Remy.Card@linux.org>.  It is currently being
+ maintained by Theodore Ts'o <tytso@alum.mit.edu>.
+ .SH AVAILABILITY
+-.B dumpe2fs
+-is part of the e2fsprogs package and is available from 
+-http://e2fsprogs.sourceforge.net.
++.B @DUMPFSPROG@
++is part of the @E2FSPROGS@ package and is available from @E2FSPROGSURL@.
+ .SH SEE ALSO
+-.BR e2fsck (8),
+-.BR mke2fs (8),
+-.BR tune2fs (8)
++.BR @FSCKPROG@(8),
++.BR @MKFSPROG@(8),
++.BR @TUNEFSPROG@(8)
+ 
+Index: ldiskfsprogs/misc/dumpe2fs.c
+===================================================================
+--- ldiskfsprogs.orig/misc/dumpe2fs.c
++++ ldiskfsprogs/misc/dumpe2fs.c
+@@ -44,7 +44,7 @@ extern int optind;
+ 
+ #define in_use(m, x)	(ext2fs_test_bit ((x), (m)))
+ 
+-const char * program_name = "dumpe2fs";
++const char * program_name = DUMPFSPROG;
+ char * device_name = NULL;
+ int hex_format = 0;
+ 
+@@ -501,7 +501,7 @@ int main (int argc, char ** argv)
+ 	textdomain(NLS_CAT_NAME);
+ #endif
+ 	add_error_table(&et_ext2_error_table);
+-	fprintf (stderr, "dumpe2fs %s (%s)\n", E2FSPROGS_VERSION,
++	fprintf (stderr, "%s %s (%s)\n", DUMPFSPROG, E2FSPROGS_VERSION,
+ 		 E2FSPROGS_DATE);
+ 	if (argc && *argv)
+ 		program_name = *argv;
+Index: ldiskfsprogs/misc/e2image.8.in
+===================================================================
+--- ldiskfsprogs.orig/misc/e2image.8.in
++++ ldiskfsprogs/misc/e2image.8.in
+@@ -2,11 +2,11 @@
+ .\" Copyright 2001 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH E2IMAGE 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @IMAGEPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-e2image \- Save critical ext2/ext3/ext4 filesystem metadata to a file
++@IMAGEPROG@ \- Save critical ext2/ext3/ext4 filesystem metadata to a file
+ .SH SYNOPSIS
+-.B e2image
++.B @IMAGEPROG@
+ [
+ .B \-rsI
+ ]
+@@ -14,13 +14,13 @@ e2image \- Save critical ext2/ext3/ext4 
+ .I image-file
+ .SH DESCRIPTION
+ The
+-.B e2image
++.B @IMAGEPROG@
+ program will save critical ext2, ext3, or ext4 filesystem metadata located on 
+ .I device  
+ to a file specified by 
+ .IR image-file .
+ The image file may be examined by 
+-.B dumpe2fs
++.B @DUMPFSPROG@
+ and
+ .BR  debugfs ,
+ by using the
+@@ -33,7 +33,7 @@ recover a badly damaged filesystem.
+ If  
+ .I image-file
+ is \-, then the output of 
+-.B e2image
++.B @IMAGEPROG@
+ will be sent to standard output, so that the output can be piped to
+ another program, such as 
+ .BR gzip (1).  
+@@ -43,7 +43,7 @@ creating a raw image file using the 
+ option, since the process of creating a normal image file currently
+ requires random access to the file, which cannot be done using a
+ pipe.  This restriction will hopefully be lifted in a future version of
+-.BR e2image .)
++.BR @IMAGEPROG@ .)
+ .PP
+ It is a very good idea to create image files for all of
+ filesystems on a system and save the partition
+@@ -55,7 +55,7 @@ the filesystem whose data it contains, t
+ accessible in the case where the filesystem has been badly damaged.
+ .PP
+ To save disk space, 
+-.B e2image
++.B @IMAGEPROG@
+ creates the image file as a sparse file.  
+ Hence, if the image file
+ needs to be copied to another location, it should
+@@ -77,7 +77,7 @@ disk will generally compress down to 3 o
+ .PP
+ The 
+ .B \-I 
+-option will cause e2image to install the metadata stored in the image
++option will cause @IMAGEPROG@ to install the metadata stored in the image
+ file back to the device.    It can be used to restore the filesystem metadata
+ back to the device in emergency situations.
+ .PP
+@@ -98,7 +98,7 @@ The 
+ option will create a raw image file instead of a normal image file.  
+ A raw image file differs
+ from a normal image file in two ways.  First, the filesystem metadata is
+-placed in the proper position so that e2fsck, dumpe2fs, debugfs,
++placed in the proper position so that e2fsck, @DUMPFSPROG@, debugfs,
+ etc. can be run directly on the raw image file.  In order to minimize
+ the amount of disk space consumed by a raw image file, the file is
+ created as a sparse file.  (Beware of copying or
+@@ -113,7 +113,7 @@ as part of bug reports to e2fsprogs.  Wh
+ recommended command is as follows (replace hda1 with the appropriate device):
+ .PP
+ .br
+-\	\fBe2image \-r /dev/hda1 \- | bzip2 > hda1.e2i.bz2\fR
++\	\fB@IMAGEPROG@ \-r /dev/hda1 \- | bzip2 > hda1.e2i.bz2\fR
+ .PP
+ This will only send the metadata information, without any data blocks.  
+ However, the filenames in the directory blocks can still reveal
+@@ -121,7 +121,7 @@ information about the contents of the fi
+ may wish to keep confidential.  To address this concern, the
+ .B \-s
+ option can be specified.  This will cause
+-.B e2image 
++.B @IMAGEPROG@
+ to scramble directory entries and zero out any unused portions
+ of the directory blocks before writing the image file.  However,
+ the 
+@@ -130,13 +130,12 @@ option will prevent analysis of problems
+ directories.
+ .PP
+ .SH AUTHOR
+-.B e2image 
++.B @IMAGEPROG@
+ was written by Theodore Ts'o (tytso@mit.edu).
+ .SH AVAILABILITY
+-.B e2image
+-is part of the e2fsprogs package and is available from 
+-http://e2fsprogs.sourceforge.net.
++.B @IMAGEPROG@
++is part of the @E2FSPROGS@ package and is available from @E2FSPROGSURL@.
+ .SH SEE ALSO
+-.BR dumpe2fs (8),
+-.BR debugfs (8)
++.BR @DUMPFSPROG@ (8),
++.BR @DEBUGFSPROG@ (8)
+ 
+Index: ldiskfsprogs/misc/e2image.c
+===================================================================
+--- ldiskfsprogs.orig/misc/e2image.c
++++ ldiskfsprogs/misc/e2image.c
+@@ -44,7 +44,7 @@ extern int optind;
+ #include "../version.h"
+ #include "nls-enable.h"
+ 
+-const char * program_name = "e2image";
++const char * program_name = IMAGEPROG;
+ char * device_name = NULL;
+ 
+ static void usage(void)
+@@ -644,7 +644,7 @@ int main (int argc, char ** argv)
+ 	bindtextdomain(NLS_CAT_NAME, LOCALEDIR);
+ 	textdomain(NLS_CAT_NAME);
+ #endif
+-	fprintf (stderr, "e2image %s (%s)\n", E2FSPROGS_VERSION,
++	fprintf (stderr, "%s %s (%s)\n", IMAGEPROG, E2FSPROGS_VERSION,
+ 		 E2FSPROGS_DATE);
+ 	if (argc && *argv)
+ 		program_name = *argv;
+Index: ldiskfsprogs/misc/e2label.8.in
+===================================================================
+--- ldiskfsprogs.orig/misc/e2label.8.in
++++ ldiskfsprogs/misc/e2label.8.in
+@@ -2,17 +2,17 @@
+ .\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH E2LABEL 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @LABELPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-e2label \- Change the label on an ext2/ext3/ext4 filesystem
++@LABELPROG@ \- Change the label on an ext2/ext3/ext4 filesystem
+ .SH SYNOPSIS
+-.B e2label
++.B @LABELPROG@
+ .I device
+ [
+ .I new-label
+ ]
+ .SH DESCRIPTION
+-.B e2label
++.B @LABELPROG@
+ will display or change the filesystem label on the ext2, ext3, or ext4 
+ filesystem located on
+ .I device.  
+@@ -20,34 +20,33 @@ filesystem located on
+ If the optional argument 
+ .I new-label
+ is not present, 
+-.B e2label
++.B @LABELPROG@
+ will simply display the current filesystem label.
+ .PP
+ If the optional argument
+ .I new-label
+ is present, then 
+-.B e2label
++.B @LABELPROG@
+ will set the filesystem label to be
+ .IR new-label .
+ Ext2 filesystem labels can be at most 16 characters long; if
+ .I new-label 
+ is longer than 16 characters, 
+-.B e2label
++.B @LABELPROG@
+ will truncate it and print a warning message.  
+ .PP
+ It is also possible to set the filesystem label using the
+ .B \-L
+ option of 
+-.BR tune2fs (8).
++.BR @TUNEFSPROG@ (8).
+ .PP
+ .SH AUTHOR
+-.B e2label 
++.B @LABELPROG@
+ was written by Theodore Ts'o (tytso@mit.edu).
+ .SH AVAILABILITY
+-.B e2label
+-is part of the e2fsprogs package and is available from 
+-http://e2fsprogs.sourceforge.net.
++.B @LABELPROG@
++is part of the @E2FSPROGS@ package and is available from @E2FSPROGSURL@.
+ .SH SEE ALSO
+-.BR mke2fs (8),
+-.BR tune2fs (8)
++.BR @MKFSPROG@ (8),
++.BR @TUNEFSPROG@ (8)
+ 
+Index: ldiskfsprogs/misc/e2label.c
+===================================================================
+--- ldiskfsprogs.orig/misc/e2label.c
++++ ldiskfsprogs/misc/e2label.c
+@@ -54,21 +54,21 @@ static int open_e2fs (char *dev, int mod
+ 	fd = open(dev, mode);
+ 	if (fd < 0) {
+ 	     perror(dev);
+-	     fprintf (stderr, _("e2label: cannot open %s\n"), dev);
++	     fprintf (stderr, _("%s: cannot open %s\n"), LABELPROG, dev);
+ 	     exit(1);
+ 	}
+ 	if (lseek(fd, 1024, SEEK_SET) != 1024) {
+ 	     perror(dev);
+-	     fprintf (stderr, _("e2label: cannot seek to superblock\n"));
++	     fprintf (stderr, _("%s: cannot seek to superblock\n"), LABELPROG);
+ 	     exit(1);
+ 	}
+ 	if (read(fd, (char *) &sb, sizeof(sb)) != sizeof(sb)) {
+ 	     perror(dev);
+-	     fprintf (stderr, _("e2label: error reading superblock\n"));
++	     fprintf (stderr, _("%s: error reading superblock\n"), LABELPROG);
+ 	     exit(1);
+ 	}
+ 	if (sb.s_magic[0] + 256*sb.s_magic[1] != EXT2_SUPER_MAGIC) {
+-	     fprintf (stderr, _("e2label: not an ext2 filesystem\n"));
++	     fprintf (stderr, _("%s: not an ext2 filesystem\n"), LABELPROG);
+ 	     exit(1);
+ 	}
+ 
+@@ -96,12 +96,13 @@ static void change_label (char *dev, cha
+ 		fprintf(stderr, _("Warning: label too long, truncating.\n"));
+ 	if (lseek(fd, 1024, SEEK_SET) != 1024) {
+ 	     perror(dev);
+-	     fprintf (stderr, _("e2label: cannot seek to superblock again\n"));
++	     fprintf (stderr, _("%s: cannot seek to superblock again\n"),
++				LABELPROG);
+ 	     exit(1);
+ 	}
+ 	if (write(fd, (char *) &sb, sizeof(sb)) != sizeof(sb)) {
+ 	     perror(dev);
+-	     fprintf (stderr, _("e2label: error writing superblock\n"));
++	     fprintf (stderr, _("%s: error writing superblock\n"), LABELPROG);
+ 	     exit(1);
+ 	}
+ }
+@@ -113,7 +114,7 @@ int main (int argc, char ** argv)
+ 	else if (argc == 3)
+ 	     change_label(argv[1], argv[2]);
+ 	else {
+-	     fprintf(stderr, _("Usage: e2label device [newlabel]\n"));
++	     fprintf(stderr, _("Usage: %s device [newlabel]\n"), LABELPROG);
+ 	     exit(1);
+ 	}
+ 	return 0;
+Index: ldiskfsprogs/misc/fsck.8.in
+===================================================================
+--- ldiskfsprogs.orig/misc/fsck.8.in
++++ ldiskfsprogs/misc/fsck.8.in
+@@ -2,11 +2,11 @@
+ .\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH FSCK 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @PFSCKPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-fsck \- check and repair a Linux file system
++@PFSCKPROG@ \- check and repair a Linux file system
+ .SH SYNOPSIS
+-.B fsck
++.B @PFSCKPROG@
+ [
+ .B \-sAVRTmMNP
+ ]
+@@ -25,7 +25,7 @@ fsck \- check and repair a Linux file sy
+ .B fs-specific-options
+ ]
+ .SH DESCRIPTION
+-.B fsck
++.B @PFSCKPROG@
+ is used to check and optionally repair one or more Linux file systems.  
+ .I filesys
+ can be a device name (e.g.
+@@ -35,7 +35,7 @@ a mount point (e.g.
+ or an ext2 label or UUID specifier (e.g.
+ UUID=8868abf6-88c5-4a83-98b8-bfc24057f7bd or LABEL=root).  
+ Normally, the 
+-.B fsck 
++.B @PFSCKPROG@
+ program will try to handle filesystems on different physical disk drives 
+ in parallel to reduce the total amount of time needed to check all of the
+ filesystems.
+@@ -43,7 +43,7 @@ filesystems.
+ If no filesystems are specified on the command line, and the 
+ .B \-A 
+ option is not specified, 
+-.B fsck
++.B @PFSCKPROG@
+ will default to checking filesystems in
+ .B /etc/fstab
+ serially.  This is equivalent to the 
+@@ -51,7 +51,7 @@ serially.  This is equivalent to the 
+ options.
+ .PP
+ The exit code returned by
+-.B fsck
++.B @PFSCKPROG@
+ is the sum of the following conditions:
+ .br
+ \	0\	\-\ No errors
+@@ -75,7 +75,7 @@ is the bit-wise OR of the exit codes for
+ file system that is checked.
+ .PP
+ In actuality,
+-.B fsck
++.B @PFSCKPROG@
+ is simply a front-end for the various file system checkers
+ (\fBfsck\fR.\fIfstype\fR) available under Linux.  The file
+ system-specific checker is searched for in
+@@ -94,9 +94,9 @@ Serialize 
+ .B fsck 
+ operations.  This is a good idea if you are checking multiple
+ filesystems and the checkers are in an interactive mode.  (Note:
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ runs in an interactive mode by default.  To make 
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ run in a non-interactive mode, you must either specify the
+ .B \-p
+ or
+@@ -176,7 +176,7 @@ If the type can not be deduced, and ther
+ given as an argument to the 
+ .B \-t 
+ option, 
+-.B fsck
++.B @PFSCKPROG@
+ will use the specified filesystem type.  If this type is not
+ available, then the default file system type (currently ext2) is used. 
+ .TP
+@@ -227,7 +227,7 @@ excessive paging is a concern.
+ .TP
+ .B \-C\fR [ \fI "fd" \fR ]
+ Display completion/progress bars for those filesystem checkers (currently 
+-only for ext2 and ext3) which support them.   Fsck will manage the
++only for ext2 and ext3) which support them.   @PFSCKPROG@ will manage the
+ filesystem checkers so that only one of them will display  
+ a progress bar at a time.  GUI front-ends may specify a file descriptor
+ .IR fd ,
+@@ -246,7 +246,7 @@ When the 
+ flag is set, check the root filesystem in parallel with the other filesystems.
+ This is not the safest thing in the world to do,
+ since if the root filesystem is in doubt things like the 
+-.BR e2fsck (8) 
++.BR @FSCKPROG@ (8) 
+ executable might be corrupted!  This option is mainly provided
+ for those sysadmins who don't want to repartition the root
+ filesystem to be small and compact (which is really the right solution).
+@@ -265,12 +265,12 @@ that are executed.
+ .TP
+ .B fs-specific-options
+ Options which are not understood by 
+-.B fsck 
++.B @PFSCKPROG@
+ are passed to the filesystem-specific checker.  These arguments
+ .B must
+ not take arguments, as there is no
+ way for 
+-.B fsck
++.B @PFSCKPROG@
+ to be able to properly guess which arguments take options and which
+ don't.
+ .IP
+@@ -283,13 +283,13 @@ Please note that fsck is not
+ designed to pass arbitrarily complicated options to filesystem-specific
+ checkers.  If you're doing something complicated, please just
+ execute the filesystem-specific checker directly.  If you pass 
+-.B fsck
++.B @PFSCKPROG@
+ some horribly complicated option and arguments, and it doesn't do
+ what you expect, 
+ .B don't bother reporting it as a bug.
+ You're almost certainly doing something that you shouldn't be doing
+ with 
+-.BR fsck.
++.BR @PFSCKPROG@.
+ .PP
+ Options to different filesystem-specific fsck's are not standardized.
+ If in doubt, please consult the man pages of the filesystem-specific
+@@ -299,11 +299,11 @@ by most file system checkers:
+ .B \-a
+ Automatically repair the file system without any questions (use
+ this option with caution).  Note that 
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ supports 
+ .B \-a
+ for backwards compatibility only.  This option is mapped to 
+-.BR e2fsck 's
++.BR @FSCKPROG@ 's
+ .B \-p
+ option which is safe to use, unlike the 
+ .B \-a 
+@@ -326,7 +326,7 @@ option at all.
+ Interactively repair the filesystem (ask for confirmations).  Note: It
+ is generally a bad idea to use this option if multiple fsck's are being
+ run in parallel.  Also note that this is 
+-.BR e2fsck 's
++.BR @FSCKPROG@ 's
+ default behavior; it supports this option for backwards compatibility
+ reasons only.
+ .TP
+@@ -350,7 +350,7 @@ Theodore Ts'o (tytso@mit.edu)
+ .IR /etc/fstab .
+ .SH ENVIRONMENT VARIABLES
+ The
+-.B fsck
++.B @PFSCKPROG@
+ program's behavior is affected by the following environment variables:
+ .TP
+ .B FSCK_FORCE_ALL_PARALLEL
+@@ -365,12 +365,12 @@ such as those sold by companies such as 
+ This environment variable will limit the maximum number of file system
+ checkers that can be running at one time.  This allows configurations
+ which have a large number of disks to avoid 
+-.B fsck
++.B @PFSCKPROG@
+ starting too many file system checkers at once, which might overload
+ CPU and memory resources available on the system.  If this value is
+ zero, then an unlimited number of processes can be spawned.  This is
+ currently the default, but future versions of
+-.B fsck
++.B @PFSCKPROG@
+ may attempt to automatically determine how many file system checks can
+ be run based on gathering accounting data from the operating system.
+ .TP
+@@ -402,7 +402,7 @@ file.  It is also useful for developers 
+ or
+ .BR fsck.ext3 (8)
+ or
+-.BR e2fsck (8),
++.BR @FSCKPROG@ (8),
+ .BR cramfsck (8),
+ .BR fsck.minix (8),
+ .BR fsck.msdos (8),
+Index: ldiskfsprogs/misc/fsck.c
+===================================================================
+--- ldiskfsprogs.orig/misc/fsck.c
++++ ldiskfsprogs/misc/fsck.c
+@@ -455,6 +455,7 @@ static int execute(const char *type, con
+ 		if ((strcmp(type, "ext2") == 0) ||
+ 		    (strcmp(type, "ext3") == 0) ||
+ 		    (strcmp(type, "ext4") == 0) ||
++		    (strcmp(type, "ldiskfs") == 0) ||
+ 		    (strcmp(type, "ext4dev") == 0)) {
+ 			char tmp[80];
+ 
+@@ -474,7 +475,7 @@ static int execute(const char *type, con
+ 
+ 	s = find_fsck(prog);
+ 	if (s == NULL) {
+-		fprintf(stderr, _("fsck: %s: not found\n"), prog);
++		fprintf(stderr, _("%s: %s: not found\n"), progname, prog);
+ 		free(inst);
+ 		return ENOENT;
+ 	}
+@@ -632,6 +633,7 @@ static struct fsck_instance *wait_one(in
+ 			if (strcmp(inst2->type, "ext2") &&
+ 			    strcmp(inst2->type, "ext3") &&
+ 			    strcmp(inst2->type, "ext4") &&
++			    strcmp(inst2->type, "ldiskfs") &&
+ 			    strcmp(inst2->type, "ext4dev"))
+ 				continue;
+ 			/*
+@@ -907,8 +909,8 @@ static int ignore(struct fs_info *fs)
+ 	/* See if the <fsck.fs> program is available. */
+ 	if (find_fsck(fs->type) == NULL) {
+ 		if (wanted)
+-			fprintf(stderr, _("fsck: cannot check %s: fsck.%s not found\n"),
+-				fs->device, fs->type);
++			fprintf(stderr, _("%s: cannot check %s: fsck.%s not found\n"),
++				progname, fs->device, fs->type);
+ 		return 1;
+ 	}
+ 
+@@ -1074,7 +1076,7 @@ static int check_all(NOARGS)
+ 
+ static void usage(NOARGS)
+ {
+-	fputs(_("Usage: fsck [-AmMNPRTV] [ -C [ fd ] ] [-t fstype] [fs-options] [filesys ...]\n"), stderr);
++	fputs(_("Usage: " PFSCKPROG " [-AmMNPRTV] [ -C [ fd ] ] [-t fstype] [fs-options] [filesys ...]\n"), stderr);
+ 	exit(EXIT_USAGE);
+ }
+ 
+@@ -1315,8 +1317,9 @@ int main(int argc, char *argv[])
+ 		}
+ 		fs = lookup(devices[i]);
+ 		if (!fs) {
+-			fs = create_fs_device(devices[i], 0, "auto",
+-					      0, -1, -1);
++			fs = create_fs_device(devices[i], 0,
++				!strcmp(PFSCKPROG, "pfsck.ldiskfs") ?
++				"ldiskfs" : "auto", 0, -1, -1);
+ 			if (!fs)
+ 				continue;
+ 		}
+Index: ldiskfsprogs/misc/mke2fs.8.in
+===================================================================
+--- ldiskfsprogs.orig/misc/mke2fs.8.in
++++ ldiskfsprogs/misc/mke2fs.8.in
+@@ -2,11 +2,11 @@
+ .\" Copyright 1993, 1994, 1995 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\"
+-.TH MKE2FS 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @MKFSPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-mke2fs \- create an ext2/ext3/ext4 filesystem
++@MKFSPROG@ \- create an ext2/ext3/ext4 filesystem
+ .SH SYNOPSIS
+-.B mke2fs
++.B @MKFSPROG@
+ [
+ .B \-c
+ |
+@@ -111,7 +111,7 @@ mke2fs \- create an ext2/ext3/ext4 files
+ .I blocks-count
+ ]
+ @JDEV@.sp
+-@JDEV@.B "mke2fs \-O journal_dev"
++@JDEV@.B "@MKFSPROG@ \-O journal_dev"
+ @JDEV@[
+ @JDEV@.B \-b
+ @JDEV@.I block-size
+@@ -139,7 +139,7 @@ mke2fs \- create an ext2/ext3/ext4 files
+ @JDEV@.I blocks-count
+ @JDEV@]
+ .SH DESCRIPTION
+-.B mke2fs
++.B @MKFSPROG@
+ is used to create an ext2, ext3, or ext4 filesystem, usually in a disk
+ partition.
+ .I device
+@@ -147,7 +147,7 @@ is the special file corresponding to the
+ .IR /dev/hdXX ).
+ .I blocks-count
+ is the number of blocks on the device.  If omitted,
+-.B mke2fs
++.B @MKFSPROG@
+ automagically figures the file system size.  If called as
+ .B mkfs.ext3
+ a journal is created as if the
+@@ -171,7 +171,7 @@ the expected usage of the filesystem (se
+ option).  If
+ .I block-size
+ is preceded by a negative sign ('-'), then
+-.B mke2fs
++.B @MKFSPROG@
+ will use heuristics to determine the
+ appropriate block size, with the constraint that the block size will be
+ at least
+@@ -191,7 +191,7 @@ separated, and may take an argument usin
+ option used to be
+ .B \-R
+ in earlier versions of
+-.BR mke2fs .
++.BR @MKFSPROG@ .
+ The
+ .B \-R
+ option is still accepted for backwards compatibility.   The
+@@ -205,7 +205,7 @@ filesystem blocks. This is the number of
+ before moving to the next disk, which is sometimes referred to as the
+ .I chunk size.
+ This mostly affects placement of filesystem metadata like bitmaps at
+-.B mke2fs
++.B @MKFSPROG@
+ time to avoid placing them on a single disk, which can hurt performance.
+ It may also be used by the block allocator.
+ .TP
+@@ -227,7 +227,7 @@ blocks.
+ .B lazy_itable_init\fR[\fB= \fI<0 to disable, 1 to enable>\fR]
+ If enabled and the uninit_bg feature is enabled, the inode table will
+ not be fully initialized by
+-.BR mke2fs .
++.BR @MKFSPROG@ .
+ This speeds up filesystem
+ initialization noticeably, but it requires the kernel to finish
+ initializing the filesystem in the background when the filesystem is
+@@ -236,7 +236,7 @@ enable lazy inode table zeroing.
+ .TP
+ .B lazy_journal_init\fR[\fB= \fI<0 to disable, 1 to enable>\fR]
+ If enabled, the journal inode will not be fully zeroed out by
+-.BR mke2fs .
++.BR @MKFSPROG@ .
+ This speeds up filesystem initialization noticeably, but carries some
+ small risk if the system crashes before the journal has been overwritten
+ entirely one time.  If the option value is omitted, it defaults to 1 to
+@@ -263,11 +263,11 @@ Specify the size of fragments in bytes.
+ .TP
+ .B \-F
+ Force
+-.B mke2fs
++.B @MKFSPROG@
+ to create a filesystem, even if the specified device is not a partition
+ on a block special device, or if other parameters do not make sense.
+ In order to force
+-.B mke2fs
++.B @MKFSPROG@
+ to create a filesystem even if the filesystem appears to be in use
+ or is mounted (a truly dangerous thing to do), this option must be
+ specified twice.
+@@ -295,7 +295,7 @@ filesystem feature is enabled.
+ .TP
+ .BI \-i " bytes-per-inode"
+ Specify the bytes/inode ratio.
+-.B mke2fs
++.B @MKFSPROG@
+ creates an inode for every
+ .I bytes-per-inode
+ bytes of space on the disk.  The larger the
+@@ -309,7 +309,7 @@ correct value for this parameter.
+ .TP
+ .BI \-I " inode-size"
+ Specify the size of each inode in bytes.
+-.B mke2fs
++.B @MKFSPROG@
+ creates 256-byte inodes by default.  In kernels after 2.6.10 and some
+ earlier vendor kernels it is possible to utilize inodes larger than
+ 128 bytes to store
+@@ -353,7 +353,7 @@ and may be no more than 102,400 filesyst
+ @JDEV@The external
+ @JDEV@journal must already have been created using the command
+ @JDEV@.IP
+-@JDEV@.B mke2fs -O journal_dev
++@JDEV@.B @MKFSPROG@ -O journal_dev
+ @JDEV@.I external-journal
+ @JDEV@.IP
+ @JDEV@Note that
+@@ -390,14 +390,14 @@ Read the bad blocks list from
+ .IR filename .
+ Note that the block numbers in the bad block list must be generated
+ using the same block size as used by
+-.BR mke2fs .
++.BR @MKFSPROG@ .
+ As a result, the
+ .B \-c
+ option to
+-.B mke2fs
++.B @MKFSPROG@
+ is a much simpler and less error-prone method of checking a disk for bad
+ blocks before formatting it, as
+-.B mke2fs
++.B @MKFSPROG@
+ will automatically pass the correct parameters to the
+ .B badblocks
+ program.
+@@ -424,12 +424,12 @@ determine where the filesystem should be
+ .TP
+ .B \-n
+ Causes
+-.B mke2fs
++.B @MKFSPROG@
+ to not actually create a filesystem, but display what it
+ would do if it were to create a filesystem.  This can be used to
+ determine the location of the backup superblocks for a particular
+ filesystem, so long as the
+-.B mke2fs
++.B @MKFSPROG@
+ parameters that were passed when the
+ filesystem was originally created are used again.  (With the
+ .B \-n
+@@ -446,7 +446,7 @@ of desired inodes directly.
+ .BI \-o " creator-os"
+ Overrides the default value of the "creator operating system" field of the
+ filesystem.  The creator field is set by default to the name of the OS the
+-.B mke2fs
++.B @MKFSPROG@
+ executable was compiled for.
+ .TP
+ .B "\-O \fIfeature\fR[,...]"
+@@ -504,7 +504,7 @@ Store file type information in directory
+ .B flex_bg
+ Allow the per-block group metadata (allocation bitmaps and inode tables)
+ to be placed anywhere on the storage media.  In addition,
+-.B mke2fs
++.B @MKFSPROG@
+ will place the per-block group metadata together starting at the first
+ block group of each "flex_bg group".   The size of the flex_bg group
+ can be specified using the 
+@@ -533,7 +533,7 @@ Reserve space so the block group descrip
+ Useful for online resizing using
+ .BR resize2fs .
+ By default
+-.B mke2fs
++.B @MKFSPROG@
+ will attempt to reserve enough space so that the
+ filesystem may grow to 1024 times its initial size.  This can be changed
+ using the
+@@ -557,7 +557,7 @@ recent Linux kernels.
+ .TP
+ .B \-q
+ Quiet execution.  Useful if
+-.B mke2fs
++.B @MKFSPROG@
+ is run in a script.
+ .TP
+ .BI \-r " revision"
+@@ -569,7 +569,7 @@ create revision 1 filesystems.
+ Write superblock and group descriptors only.  This is useful if all of
+ the superblock and backup superblocks are corrupted, and a last-ditch
+ recovery method is desired.  It causes
+-.B mke2fs
++.B @MKFSPROG@
+ to reinitialize the
+ superblock and group descriptors, while not touching the inode table
+ and the block and inode bitmaps.  The
+@@ -586,7 +586,7 @@ or there is no chance of recovery.
+ .BI \-t " fs-type"
+ Specify the filesystem type (i.e., ext2, ext3, ext4, etc.) that is to be created.
+ If this option is not specified,
+-.B mke2fs
++.B @MKFSPROG@
+ will pick a default either via how
+ the command was run (for example, using a name of the form mkfs.ext2,
+ mkfs.ext3, etc.) or via a default as defined by the
+@@ -603,15 +603,15 @@ option is used to explicitly add or remo
+ should be set in the newly created filesystem, the
+ resulting filesystem may not be supported by the requested
+ .IR fs-type .
+-(e.g., "\fBmke2fs \-t ext3 \-O extents /dev/sdXX\fR" will create a
++(e.g., "\fB@MKFSPROG@ \-t ext3 \-O extents /dev/sdXX\fR" will create a
+ filesystem that is not supported by the ext3 implementation as found in
+-the Linux kernel; and "\fBmke2fs \-t ext3 \-O ^has_journal /dev/hdXX\fR"
++the Linux kernel; and "\fB@MKFSPROG@ \-t ext3 \-O ^has_journal /dev/hdXX\fR"
+ will create a filesystem that does not have a journal and hence will not
+ be supported by the ext3 filesystem code in the Linux kernel.)
+ .TP
+ .BI \-T " usage-type[,...]"
+ Specify how the filesystem is going to be used, so that
+-.B mke2fs
++.B @MKFSPROG@
+ can choose optimal filesystem parameters for that use.  The usage
+ types that are supported are defined in the configuration file
+ .BR /etc/mke2fs.conf (5).
+@@ -619,15 +619,15 @@ The user may specify one or more usage t
+ using a comma separated list.
+ .sp
+ If this option is is not specified,
+-.B mke2fs
++.B @MKFSPROG@
+ will pick a single default usage type based on the size of the filesystem to
+ be created.  If the filesystem size is less than or equal to 3 megabytes,
+-.B mke2fs
++.B @MKFSPROG@
+ will use the filesystem type
+ .IR floppy .
+ If the filesystem size is greater than 3 but less than or equal to
+ 512 megabytes,
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+ will use the filesystem type
+ .IR small .
+ If the filesystem size is greater than or equal to 4 terabytes but less than
+@@ -640,7 +640,7 @@ If the filesystem size is greater than o
+ will use the filesystem type
+ .IR huge .
+ Otherwise,
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+ will use the default filesystem type
+ .IR default .
+ .TP
+@@ -652,7 +652,7 @@ Verbose execution.
+ .TP
+ .B \-V
+ Print the version number of
+-.B mke2fs
++.B @MKFSPROG@
+ and exit.
+ .SH ENVIRONMENT
+ .TP
+@@ -679,10 +679,10 @@ If set, do not show the message of files
+ mount count or check interval.
+ .SH AUTHOR
+ This version of
+-.B mke2fs
++.B @MKFSPROG@
+ has been written by Theodore Ts'o <tytso@mit.edu>.
+ .SH BUGS
+-.B mke2fs
++.B @MKFSPROG@
+ accepts the
+ .B \-f
+ option but currently ignores it because the second
+@@ -690,12 +690,11 @@ extended file system does not support fr
+ .br
+ There may be other ones.  Please, report them to the author.
+ .SH AVAILABILITY
+-.B mke2fs
+-is part of the e2fsprogs package and is available from
+-http://e2fsprogs.sourceforge.net.
++.B @MKFSPROG@
++is part of the @E2FSPROGS@ package and is available from @E2FSPROGSURL@.
+ .SH SEE ALSO
+ .BR mke2fs.conf (5),
+ .BR badblocks (8),
+-.BR dumpe2fs (8),
+-.BR e2fsck (8),
+-.BR tune2fs (8)
++.BR @DUMPFSPROG@ (8),
++.BR @FSCKPROG@ (8),
++.BR @TUNEFSPROG@ (8)
+Index: ldiskfsprogs/misc/mke2fs.c
+===================================================================
+--- ldiskfsprogs.orig/misc/mke2fs.c
++++ ldiskfsprogs/misc/mke2fs.c
+@@ -77,7 +77,7 @@ extern int optind;
+ extern int isatty(int);
+ extern FILE *fpopen(const char *cmd, const char *mode);
+ 
+-const char * program_name = "mke2fs";
++const char * program_name = MKFSPROG;
+ const char * device_name /* = NULL */;
+ 
+ /* Command line options */
+@@ -830,12 +830,12 @@ static __u32 ok_features[3] = {
+ static void syntax_err_report(const char *filename, long err, int line_num)
+ {
+ 	fprintf(stderr,
+-		_("Syntax error in mke2fs config file (%s, line #%d)\n\t%s\n"),
+-		filename, line_num, error_message(err));
++		_("Syntax error in %s config file (%s, line #%d)\n\t%s\n"),
++		MKFSPROG, filename, line_num, error_message(err));
+ 	exit(1);
+ }
+ 
+-static const char *config_fn[] = { ROOT_SYSCONFDIR "/mke2fs.conf", 0 };
++static const char *config_fn[] = { ROOT_SYSCONFDIR "/" MKFSPROG ".conf", 0 };
+ 
+ static void edit_feature(const char *str, __u32 *compat_array)
+ {
+@@ -993,12 +993,12 @@ static char **parse_fs_type(const char *
+ 
+ 	if (!profile_has_subsection(profile, "fs_types", ext_type) &&
+ 	    strcmp(ext_type, "ext2")) {
+-		printf(_("\nYour mke2fs.conf file does not define the "
++		printf(_("\nYour " MKFSPROG ".conf file does not define the "
+ 			 "%s filesystem type.\n"), ext_type);
+ 		if (!strcmp(ext_type, "ext3") || !strcmp(ext_type, "ext4") ||
+ 		    !strcmp(ext_type, "ext4dev")) {
+ 			printf(_("You probably need to install an updated "
+-				 "mke2fs.conf file.\n\n"));
++				 MKFSPROG ".conf file.\n\n"));
+ 		}
+ 		if (!force) {
+ 			printf(_("Aborting...\n"));
+@@ -1045,7 +1045,7 @@ static char **parse_fs_type(const char *
+ 			else if (strcmp(cp, "default") != 0)
+ 				fprintf(stderr,
+ 					_("\nWarning: the fs_type %s is not "
+-					  "defined in mke2fs.conf\n\n"),
++					  "defined in " MKFSPROG ".conf\n\n"),
+ 					cp);
+ 		}
+ 		if (t)
+@@ -1255,7 +1255,8 @@ profile_error:
+ 
+ 		/* If called as mkfs.ext3, create a journal inode */
+ 		if (!strcmp(program_name, "mkfs.ext3") ||
+-		    !strcmp(program_name, "mke3fs"))
++		    !strcmp(program_name, "mke3fs") ||
++		    !strcmp(program_name, "mkfs.ldiskfs"))
+ 			journal_size = -1;
+ 	}
+ 
+@@ -1450,7 +1451,7 @@ profile_error:
+ 	device_name = argv[optind++];
+ 
+ 	if (!quiet || show_version_only)
+-		fprintf (stderr, "mke2fs %s (%s)\n", E2FSPROGS_VERSION,
++		fprintf (stderr, "%s %s (%s)\n", MKFSPROG, E2FSPROGS_VERSION,
+ 			 E2FSPROGS_DATE);
+ 
+ 	if (show_version_only) {
+Index: ldiskfsprogs/misc/mke2fs.conf.5.in
+===================================================================
+--- ldiskfsprogs.orig/misc/mke2fs.conf.5.in
++++ ldiskfsprogs/misc/mke2fs.conf.5.in
+@@ -2,19 +2,19 @@
+ .\" Copyright 2006 by Theodore Ts'o.  All Rights Reserved.
+ .\" This file may be copied under the terms of the GNU Public License.
+ .\" 
+-.TH mke2fs.conf 5 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @MKFSPROG@.conf 5 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-mke2fs.conf \- Configuration file for mke2fs
++@MKFSPROG@.conf \- Configuration file for @MKFSPROG@
+ .SH DESCRIPTION
+-.I mke2fs.conf
++.I @MKFSPROG@.conf
+ is the configuration file for 
+-.BR mke2fs (8).  
++.BR @MKFSPROG@ (8).
+ It controls the default parameters used by 
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+ when it is creating ext2 or ext3 filesystems.
+ .PP
+ The
+-.I mke2fs.conf
++.I @MKFSPROG@.conf
+ file uses an INI-style format.  Stanzas, or top-level sections, are 
+ delimited by square braces: [ ].  Within each section, each line 
+ defines a relation, which assigns tags to values, or to a subsection,
+@@ -60,14 +60,14 @@ apply: "\en" (for the newline character)
+ and "\e\e" (for the backslash character).
+ .P
+ The following stanzas are used in the 
+-.I mke2fs.conf
++.I @MKFSPROG@.conf
+ file.  They will be described in more detail in future sections of this
+ document.
+ .TP 
+ .I [defaults]
+ Contains relations which define the default parameters 
+ used by
+-.BR mke2fs (8).
++.BR @MKFSPROG@ (8).
+ In general, these defaults may be overridden by a definition in the
+ .B fs_types
+ stanza, or by an command-line option provided by the user.
+@@ -78,7 +78,7 @@ filesystem types.  The filesystem type c
+ the 
+ .B -T
+ option to
+-.BR mke2fs (8).
++.BR @MKFSPROG@ (8).
+ .SH THE [defaults] STANZA
+ The following relations are defined in the 
+ .I [defaults]
+@@ -105,7 +105,7 @@ and by the 
+ .B -O
+ command-line option
+ to 
+-.BR mke2fs (8).
++.BR @MKFSPROG@ (8).
+ .TP
+ .I enable_periodic_fsck
+ This relation specifies whether periodic filesystem checks should be
+@@ -120,7 +120,7 @@ command-line options to
+ .TP
+ .I force_undo
+ This relation, if set to a boolean value of true, forces
+-.B mke2fs
++.B @MKFSPROG@
+ to always try to create an undo file, even if the undo file might be
+ huge and it might extend the time to create the filesystem image
+ because the inode table isn't being initialized lazily.
+@@ -130,12 +130,12 @@ This relation specifies the default file
+ specify it via the
+ .B \-t
+ option, or if
+-.B mke2fs
++.B @MKFSPROG@
+ is not started using a program name of the form
+ .BI mkfs. fs-type\fR.
+ If both the user and the
+-.B mke2fs.conf
+-file does not specify a default filesystem type, mke2fs will use a
++.B @MKFSPROG@.conf
++file does not specify a default filesystem type, @MKFSPROG@ will use a
+ default filesystem type of
+ .IR ext3
+ if a journal was requested via a command-line option, or
+@@ -174,7 +174,7 @@ stored.  It can be overridden via the
+ .B E2FSPROGS_UNDO_DIR
+ environment variable.  If the directory location is set to the value
+ .IR none ,
+-.B mke2fs
++.B @MKFSPROG@
+ will not create an undo file.
+ .SH THE [fs_types] STANZA
+ Each tag in the
+@@ -184,22 +184,22 @@ stanza names a filesystem type or usage 
+ or
+ .B \-T
+ options to
+-.BR mke2fs (8),
++.BR @MKFSPROG@ (8),
+ respectively.
+ .P
+ The
+-.B mke2fs
++.B @MKFSPROG@
+ program constructs a list of fs_types by concatenating the filesystem
+ type (i.e., ext2, ext3, etc.) with the usage type list.  For most
+ configuration options,
+-.B mke2fs
++.B @MKFSPROG@
+ will look for a subsection in the
+ .I [fs_types]
+ stanza corresponding with each entry in the constructed list, with later
+ entries overriding earlier filesystem or usage types.
+ For
+ example, consider the following
+-.B mke2fs.conf
++.B @MKFSPROG@.conf
+ fragment:
+ .P
+ [defaults]
+@@ -248,11 +248,11 @@ fragment:
+ .br
+ 	}
+ .P
+-If mke2fs started with a program name of
+-.BR mke2fs.ext4 ,
++If @MKFSPROG@ started with a program name of
++.BR @MKFSPROG@.ext4 ,
+ then the filesystem type of ext4 will be used.  If the filesystem is
+ smaller than 3 megabytes, and no usage type is specified, then
+-.B mke2fs
++.B @MKFSPROG@
+ will use a default
+ usage type of
+ .IR floppy .
+@@ -288,7 +288,7 @@ will be used, so if there are multiple e
+ whose subsections define the
+ .I base_features
+ relation, only the last will be used by
+-.BR mke2fs (8).
++.BR @MKFSPROG@ (8).
+ .TP
+ .I features
+ This relation specifies a comma-separated list of features edit
+@@ -296,7 +296,7 @@ requests which modify the feature set
+ used by the newly constructed filesystem.  The syntax is the same as the
+ .B -O
+ command-line option to
+-.BR mke2fs (8);
++.BR @MKFSPROG@ (8);
+ that is, a feature can be prefixed by a caret ('^') symbol to disable
+ a named feature.  Each
+ .I feature
+@@ -312,7 +312,7 @@ and
+ relations.  It may be overridden by the
+ .B -O
+ command-line option to
+-.BR mke2fs (8).
++.BR @MKFSPROG@ (8).
+ .TP
+ .I auto_64-bit_support
+ This relation is a boolean which specifies whether
+@@ -339,7 +339,7 @@ be lazily initialized.  It only has mean
+ enabled.  If lazy_itable_init is true and the uninit_bg feature is
+ enabled,  the inode table will
+ not fully initialized by 
+-.BR mke2fs (8).
++.BR @MKFSPROG@ (8).
+ This speeds up filesystem
+ initialization noticeably, but it requires the kernel to finish
+ initializing the filesystem in the background when the filesystem is
+@@ -371,22 +371,22 @@ specified if the flex_bg filesystem feat
+ .I options
+ This relation specifies additional extended options which should be
+ treated by
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+ as if they were prepended to the argument of the
+ .B -E
+ option.  This can be used to configure the default extended options used
+ by
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+ on a per-filesystem type basis.
+ .TP
+ .I discard
+ This relation is a boolean which specifies whether the
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+ should attempt to discard device prior to filesystem creation.
+ .SH FILES
+ .TP
+-.I /etc/mke2fs.conf
++.I /etc/@MKFSPROG@.conf
+ The configuration file for 
+-.BR mke2fs (8).
++.BR @MKFSPROG@ (8).
+ .SH SEE ALSO
+-.BR mke2fs (8)
++.BR @MKFSPROG@ (8)
+Index: ldiskfsprogs/misc/mke2fs.conf.in
+===================================================================
+--- /dev/null
++++ ldiskfsprogs/misc/mke2fs.conf.in
+@@ -0,0 +1,47 @@
++[defaults]
++	base_features = sparse_super,filetype,resize_inode,dir_index,ext_attr
++	default_mntopts = acl,user_xattr
++	enable_periodic_fsck = 0
++	blocksize = 4096
++	inode_size = 256
++	inode_ratio = 16384
++
++[fs_types]
++	ext3 = {
++		features = has_journal
++	}
++	@FSNAME@ = {
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize
++		auto_64-bit_support = 1
++		inode_size = 256
++	}
++	ext4dev = {
++		features = has_journal,extent,huge_file,flex_bg,uninit_bg,dir_nlink,extra_isize
++		inode_size = 256
++		options = test_fs=1
++	}
++	small = {
++		blocksize = 1024
++		inode_size = 128
++		inode_ratio = 4096
++	}
++	floppy = {
++		blocksize = 1024
++		inode_size = 128
++		inode_ratio = 8192
++	}
++	news = {
++		inode_ratio = 4096
++	}
++	largefile = {
++		inode_ratio = 1048576
++		blocksize = -1
++	}
++	largefile4 = {
++		inode_ratio = 4194304
++		blocksize = -1
++	}
++	hurd = {
++	     blocksize = 4096
++	     inode_size = 128
++	}
+Index: ldiskfsprogs/misc/tune2fs.8.in
+===================================================================
+--- ldiskfsprogs.orig/misc/tune2fs.8.in
++++ ldiskfsprogs/misc/tune2fs.8.in
+@@ -2,11 +2,11 @@
+ .\" Initial revision
+ .\"
+ .\"
+-.TH TUNE2FS 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @TUNEFSPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-tune2fs \- adjust tunable filesystem parameters on ext2/ext3/ext4 filesystems
++@TUNEFSPROG@ \- adjust tunable filesystem parameters on ext2/ext3/ext4 filesystems
+ .SH SYNOPSIS
+-.B tune2fs
++.B @TUNEFSPROG@
+ [
+ .B \-l
+ ]
+@@ -86,13 +86,13 @@ tune2fs \- adjust tunable filesystem par
+ ]
+ device
+ .SH DESCRIPTION
+-.BI tune2fs
++.BI @TUNEFSPROG@
+ allows the system administrator to adjust various tunable filesystem 
+ parameters on Linux ext2, ext3, or ext4 filesystems.  The current values 
+ of these options can be displayed by using the
+ .B -l
+ option to
+-.BR tune2fs (8)
++.BR @TUNEFSPROG@ (8)
+ program, or by using the
+ .BR dumpe2fs (8)
+ program.
+@@ -106,12 +106,12 @@ LABEL=home or UUID=e40486c6-84d5-4f2f-b9
+ .TP
+ .BI \-c " max-mount-counts"
+ Adjust the number of mounts after which the filesystem will be checked by 
+-.BR e2fsck (8).  
++.BR @FSCKPROG@ (8).
+ If
+ .I max-mount-counts
+ is 0 or \-1, the number of times the filesystem is mounted will be disregarded 
+ by
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ and the kernel.
+ .sp
+ Staggering the mount-counts at which filesystems are forcibly
+@@ -139,13 +139,13 @@ If set to a greater value than the max-m
+ set by the 
+ .B \-c
+ option,
+-.BR e2fsck (8) 
++.BR @FSCKPROG@ (8)
+ will check the filesystem at the next reboot.
+ .TP
+ .BI \-e " error-behavior"
+ Change the behavior of the kernel code when errors are detected.
+ In all cases, a filesystem error will cause
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ to check the filesystem on the next boot.
+ .I error-behavior
+ can be one of the following:
+@@ -228,7 +228,7 @@ using production-level filesystem code.
+ .RE
+ .TP
+ .B \-f
+-Force the tune2fs operation to complete even in the face of errors.  This 
++Force the @TUNEFSPROG@ operation to complete even in the face of errors.  This
+ option is useful when removing the 
+ .B has_journal
+ filesystem feature from a filesystem which has 
+@@ -265,7 +265,7 @@ It is strongly recommended that either
+ (mount-count-dependent) or
+ .B \-i
+ (time-dependent) checking be enabled to force periodic full
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ checking of the filesystem.  Failure to do so may lead to filesystem
+ corruption (due to bad disks, cables, memory, or kernel bugs) going
+ unnoticed, ultimately resulting in data loss or corruption.
+@@ -287,14 +287,14 @@ mounted.  While the ext3 journal is visi
+ delete it, or modify it while the filesystem is mounted; for this
+ reason the file is marked immutable.
+ While checking unmounted filesystems, 
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ will automatically move 
+ .B .journal
+ files to the invisible, reserved journal inode.  For all filesystems
+ except for the root filesystem,  this should happen automatically and
+ naturally during the next reboot cycle.  Since the root filesystem is
+ mounted read-only,
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ must be run from a rescue floppy in order to effect this transition.
+ .IP
+ On some distributions, such as Debian, if an initial ramdisk is used,
+@@ -336,7 +336,7 @@ that size.
+ @JDEV@In addition, while there is support for attaching
+ @JDEV@multiple filesystems to a single external journal,
+ @JDEV@the Linux kernel and 
+-@JDEV@.BR e2fsck (8)
++@JDEV@.BR @FSCKPROG@ (8)
+ @JDEV@do not currently support shared external journals yet.
+ @JDEV@.IP
+ @JDEV@Instead of specifying a device name directly,
+@@ -351,7 +351,7 @@ that size.
+ @JDEV@to display a journal device's volume label and UUID.  See also the
+ @JDEV@.B -L
+ @JDEV@option of
+-@JDEV@.BR tune2fs (8).
++@JDEV@.BR @TUNEFSPROG@ (8).
+ .RE
+ @JDEV@.IP
+ @JDEV@Only one of the
+@@ -367,7 +367,7 @@ Set the volume label of the filesystem. 
+ Ext2 filesystem labels can be at most 16 characters long; if
+ .I volume-label 
+ is longer than 16 characters, 
+-.B tune2fs
++.B @TUNEFSPROG@
+ will truncate it and print a warning.  The volume label can be used
+ by
+ .BR mount (8),
+@@ -411,7 +411,7 @@ mount options without a prefix character
+ character ('+') will be added to the filesystem.
+ .IP
+ The following mount options can be set or cleared using
+-.BR tune2fs :
++.BR @TUNEFSPROG@ :
+ .RS 1.2i
+ .TP
+ .B debug
+@@ -490,7 +490,7 @@ filesystem features without a prefix cha
+ character ('+') will be added to the filesystem.
+ .IP
+ The following filesystem features can be set or cleared using
+-.BR tune2fs :
++.BR @TUNEFSPROG@ :
+ .RS 1.2i
+ .TP
+ .B dir_index
+@@ -505,7 +505,7 @@ Store file type information in directory
+ .TP
+ .B flex_bg
+ Allow bitmaps and inode tables for a block group to be placed
+-anywhere on the storage media.  \fBTune2fs\fR will not reorganize
++anywhere on the storage media.  \fB@TUNEFSPROG@\fR will not reorganize
+ the location of the inode tables and allocation bitmaps, as
+ .BR mke2fs (8)
+ will do when it creates a freshly formated file system with
+@@ -525,7 +525,7 @@ set this feature automatically when a fi
+ .B resize_inode
+ Reserve space so the block group descriptor table may grow in the
+ future.
+-.B Tune2fs 
++.B @TUNEFSPROG@
+ only supports clearing this filesystem feature.
+ .TP
+ .B mmp
+@@ -539,9 +539,9 @@ Limit the number of backup superblocks t
+ .B uninit_bg
+ Allow the kernel to initialize bitmaps and inode tables and keep a high
+ watermark for the unused inodes in a filesystem, to reduce
+-.BR e2fsck (8)
+-time.  This first e2fsck run after enabling this feature will take the
+-full time, but subsequent e2fsck runs will take only a fraction of the
++.BR @FSCKPROG@ (8)
++time.  This first @FSCKPROG@ run after enabling this feature will take the
++full time, but subsequent @FSCKPROG@ runs will take only a fraction of the
+ original time, depending on how full the file system is.
+ .RE
+ .IP
+@@ -552,15 +552,15 @@ After setting or clearing 
+ or
+ .B resize_inode
+ filesystem features,
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ must be run on the filesystem to return the filesystem to a consistent state.
+-.B Tune2fs
++.B @TUNEFSPROG@
+ will print a message requesting that the system administrator run
+-.BR e2fsck (8)
++.BR @FSCKPROG@ (8)
+ if necessary.  After setting the 
+ .B dir_index
+ feature, 
+-.B e2fsck -D
++.B @FSCKPROG@ -D
+ can be run to convert existing directories to the hashed B-tree format.
+ Enabling certain filesystem features may prevent the filesystem from being
+ mounted by kernels which do not support those features.  In particular, the
+@@ -577,7 +577,7 @@ Set the number of reserved filesystem bl
+ .TP
+ .BI \-T " time-last-checked"
+ Set the time the filesystem was last checked using
+-.BR  e2fsck .
++.BR  @FSCKPROG@ .
+ The time is interpreted using the current (local) timezone.
+ This can be useful in scripts which use a Logical Volume Manager to make
+ a consistent snapshot of a filesystem, and then check the filesystem 
+@@ -636,24 +636,23 @@ If the system does not have a good rando
+ .I /dev/random
+ or
+ .IR /dev/urandom ,
+-.B tune2fs
++.B @TUNEFSPROG@
+ will automatically use a time-based UUID instead of a randomly-generated UUID.
+ .SH BUGS
+ We haven't found any bugs yet.  That doesn't mean there aren't any...
+ .SH AUTHOR
+-.B tune2fs 
++.B @TUNEFSPROG@
+ was written by Remy Card <Remy.Card@linux.org>.  It is currently being
+ maintained by Theodore Ts'o <tytso@alum.mit.edu>.
+-.B tune2fs
++.B @TUNEFSPROG@
+ uses the ext2fs library written by Theodore Ts'o <tytso@mit.edu>.
+ This manual page was written by Christian Kuhtz <chk@data-hh.Hanse.DE>.
+ Time-dependent checking was added by Uwe Ohse <uwe@tirka.gun.de>.
+ .SH AVAILABILITY
+-.B tune2fs
+-is part of the e2fsprogs package and is available from 
+-http://e2fsprogs.sourceforge.net.
++.B @TUNEFSPROG@
++is part of the @E2FSPROGS@ package and is available from @E2FSPROGSURL@.
+ .SH SEE ALSO
+-.BR debugfs (8),
+-.BR dumpe2fs (8),
+-.BR e2fsck (8),
+-.BR mke2fs (8)
++.BR @DEBUGFSPROG@ (8),
++.BR @DUMPFSPROG@ (8),
++.BR @FSCKPROG@ (8),
++.BR @MKFSPROG@ (8)
+Index: ldiskfsprogs/misc/tune2fs.c
+===================================================================
+--- ldiskfsprogs.orig/misc/tune2fs.c
++++ ldiskfsprogs/misc/tune2fs.c
+@@ -59,7 +59,7 @@ extern int optind;
+ #include "../version.h"
+ #include "nls-enable.h"
+ 
+-const char *program_name = "tune2fs";
++const char *program_name = TUNEFSPROG;
+ char *device_name;
+ char *new_label, *new_last_mounted, *new_UUID;
+ char *io_options;
+@@ -96,8 +96,6 @@ struct blk_move {
+ };
+ 
+ 
+-static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
+-
+ #ifdef CONFIG_BUILD_FINDFS
+ void do_findfs(int argc, char **argv);
+ #endif
+@@ -350,7 +348,7 @@ static void request_fsck_afterwards(ext2
+ 	if (requested++)
+ 		return;
+ 	fs->super->s_state &= ~EXT2_VALID_FS;
+-	printf("\n%s\n", _(please_fsck));
++	printf("\nPlease run %s on the filesystem.\n", FSCKPROG);
+ 	if (mount_flags & EXT2_MF_READONLY)
+ 		printf(_("(and reboot afterwards!)\n"));
+ }
+@@ -408,9 +406,9 @@ static int update_feature_set(ext2_filsy
+ 		}
+ 		if (sb->s_feature_incompat &
+ 		    EXT3_FEATURE_INCOMPAT_RECOVER) {
+-			fputs(_("The needs_recovery flag is set.  "
+-				"Please run e2fsck before clearing\n"
+-				"the has_journal flag.\n"), stderr);
++			fprintf(stderr, _("The needs_recovery flag is set.  "
++				"Please run %s before clearing\n"
++				"the has_journal flag.\n"), FSCKPROG);
+ 			return 1;
+ 		}
+ 		if (sb->s_journal_inum) {
+@@ -665,7 +663,7 @@ err:
+ static void parse_e2label_options(int argc, char ** argv)
+ {
+ 	if ((argc < 2) || (argc > 3)) {
+-		fputs(_("Usage: e2label device [newlabel]\n"), stderr);
++		fprintf(stderr, _("Usage: %s device [newlabel]\n"), LABELPROG);
+ 		exit(1);
+ 	}
+ 	io_options = strchr(argv[1], '?');
+@@ -673,7 +671,7 @@ static void parse_e2label_options(int ar
+ 		*io_options++ = 0;
+ 	device_name = blkid_get_devname(NULL, argv[1], NULL);
+ 	if (!device_name) {
+-		com_err("e2label", 0, _("Unable to resolve '%s'"),
++		com_err(LABELPROG, 0, _("Unable to resolve '%s'"),
+ 			argv[1]);
+ 		exit(1);
+ 	}
+@@ -1687,9 +1685,9 @@ static int tune2fs_setup_tdb(const char 
+ 	set_undo_io_backing_manager(*io_ptr);
+ 	*io_ptr = undo_io_manager;
+ 	set_undo_io_backup_file(tdb_file);
+-	printf(_("To undo the tune2fs operation please run "
++	printf(_("To undo the %s operation please run "
+ 		 "the command\n    e2undo %s %s\n\n"),
+-		 tdb_file, name);
++		 TUNEFSPROG, tdb_file, name);
+ 	free(tdb_file);
+ 	free(tmp_name);
+ 	return retval;
+@@ -1717,7 +1715,7 @@ int main(int argc, char **argv)
+ 	if (strcmp(get_progname(argv[0]), "findfs") == 0)
+ 		do_findfs(argc, argv);
+ #endif
+-	if (strcmp(get_progname(argv[0]), "e2label") == 0)
++	if (strcmp(get_progname(argv[0]), LABELPROG) == 0)
+ 		parse_e2label_options(argc, argv);
+ 	else
+ 		parse_tune2fs_options(argc, argv);
+@@ -1744,12 +1742,13 @@ retry_open:
+ 			device_name);
+ 		if (retval == EXT2_ET_MMP_FSCK_ON)
+ 			fprintf(stderr,
+-				_("If you are sure e2fsck is not running then "
+-				  "use 'tune2fs -f -E clear_mmp {device}'\n"));
++				_("If you are sure %s is not running then "
++				  "use '%s -f -E clear_mmp {device}'\n"),
++				   FSCKPROG, TUNEFSPROG);
+ 		else if (retval == EXT2_ET_MMP_MAGIC_INVALID)
+ 			fprintf(stderr,
+ 				_("Magic for mmp is wrong. Try to fix it by "
+-				  "using 'fsck {device}'\n"));
++				  "using '%s {device}'\n"), FSCKPROG);
+ 		else if (retval != EXT2_ET_MMP_FAILED)
+ 			fprintf(stderr,
+ 			     _("Couldn't find valid filesystem superblock.\n"));
+@@ -1876,8 +1875,8 @@ retry_open:
+ 				EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER;
+ 			sb->s_state &= ~EXT2_VALID_FS;
+ 			ext2fs_mark_super_dirty(fs);
+-			printf(_("\nSparse superblock flag set.  %s"),
+-			       _(please_fsck));
++			printf(_("\nSparse superblock flag set.  "
++				"Please run %s on the filesystem."), FSCKPROG);
+ 		}
+ 	}
+ 	if (s_flag == 0) {
+Index: ldiskfsprogs/misc/util.c
+===================================================================
+--- ldiskfsprogs.orig/misc/util.c
++++ ldiskfsprogs/misc/util.c
+@@ -155,8 +155,8 @@ void check_mount(const char *device, int
+ 	if (mount_flags & EXT2_MF_MOUNTED) {
+ 		fprintf(stderr, _("%s is mounted; "), device);
+ 		if (force > 2) {
+-			fputs(_("mke2fs forced anyway.  Hope /etc/mtab is "
+-				"incorrect.\n"), stderr);
++			fprintf(stderr, _("%s forced anyway.  Hope /etc/mtab is "
++				"incorrect.\n"), MKFSPROG);
+ 			return;
+ 		}
+ 	abort_mke2fs:
+@@ -167,7 +167,7 @@ void check_mount(const char *device, int
+ 		fprintf(stderr, _("%s is apparently in use by the system; "),
+ 			device);
+ 		if (force > 2) {
+-			fputs(_("mke2fs forced anyway.\n"), stderr);
++			fprintf(stderr, _("%s forced anyway.\n"), MKFSPROG);
+ 			return;
+ 		}
+ 		goto abort_mke2fs;
+@@ -287,9 +287,9 @@ void print_check_message(ext2_filsys fs)
+ 	printf(_("This filesystem will be automatically "
+ 		 "checked every %d mounts or\n"
+ 		 "%g days, whichever comes first.  "
+-		 "Use tune2fs -c or -i to override.\n"),
++		 "Use %s -c or -i to override.\n"),
+ 	       fs->super->s_max_mnt_count,
+-	       (double)fs->super->s_checkinterval / (3600 * 24));
++	       (double)fs->super->s_checkinterval / (3600 * 24), TUNEFSPROG);
+ }
+ 
+ void dump_mmp_msg(struct mmp_struct *mmp, const char *msg)
+Index: ldiskfsprogs/po/Makefile.in.in
+===================================================================
+--- ldiskfsprogs.orig/po/Makefile.in.in
++++ ldiskfsprogs/po/Makefile.in.in
+@@ -10,7 +10,7 @@
+ #
+ # Origin: gettext-0.14
+ 
+-PACKAGE = @PACKAGE@
++PACKAGE = @E2FSPROGS@
+ VERSION = @VERSION@
+ 
+ SHELL = /bin/sh
+Index: ldiskfsprogs/resize/Makefile.in
+===================================================================
+--- ldiskfsprogs.orig/resize/Makefile.in
++++ ldiskfsprogs/resize/Makefile.in
+@@ -12,9 +12,9 @@ LDFLAG_STATIC = @LDFLAG_STATIC@
+ 
+ @MCONFIG@
+ 
+-PROGS=		resize2fs
++PROGS=		@RESIZEFSPROG@
+ TEST_PROGS=	test_extent
+-MANPAGES=	resize2fs.8
++MANPAGES=	@RESIZEFSPROG@.8
+ 
+ RESIZE_OBJS= extent.o resize2fs.o main.o online.o sim_progress.o 
+ 
+@@ -39,18 +39,18 @@ DEPSTATIC_LIBS= $(STATIC_LIBE2P) $(STATI
+ 
+ all:: $(PROGS) $(TEST_PROGS) $(MANPAGES) 
+ 
+-resize2fs: $(RESIZE_OBJS) $(DEPLIBS)
++@RESIZEFSPROG@: $(RESIZE_OBJS) $(DEPLIBS)
+ 	$(E) "	LD $@"
+-	$(Q) $(CC) $(ALL_LDFLAGS) -o resize2fs $(RESIZE_OBJS) $(LIBS) 
++	$(Q) $(CC) $(ALL_LDFLAGS) -o @RESIZEFSPROG@ $(RESIZE_OBJS) $(LIBS)
+ 
+ resize2fs.static: $(RESIZE_OBJS) $(DEPSTATIC_LIBS)
+ 	$(E) "	LD $@"
+ 	$(Q) $(LD) $(ALL_LDFLAGS) $(LDFLAG_STATIC) -o resize2fs.static \
+ 		$(RESIZE_OBJS) $(STATIC_LIBS) 
+ 
+-resize2fs.8: $(DEP_SUBSTITUTE) $(srcdir)/resize2fs.8.in
++@RESIZEFSPROG@.8: $(DEP_SUBSTITUTE) $(srcdir)/resize2fs.8.in
+ 	$(E) "	SUBST $@"
+-	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/resize2fs.8.in resize2fs.8
++	$(Q) $(SUBSTITUTE_UPTIME) $(srcdir)/resize2fs.8.in @RESIZEFSPROG@.8
+ 
+ test_extent: $(TEST_EXTENT_OBJS)
+ 	$(E) "	LD $@"
+Index: ldiskfsprogs/resize/resize2fs.8.in
+===================================================================
+--- ldiskfsprogs.orig/resize/resize2fs.8.in
++++ ldiskfsprogs/resize/resize2fs.8.in
+@@ -2,11 +2,11 @@
+ .\" Copyright 1997 by Theodore Ts'o.  All Rights Reserved.
+ .\" 
+ .\" .TH RESIZE2FS 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
+-.TH RESIZE2FS 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "E2fsprogs version @E2FSPROGS_VERSION@"
++.TH @RESIZEFSPROG@ 8 "@E2FSPROGS_MONTH@ @E2FSPROGS_YEAR@" "@E2FSPROGS@ version @E2FSPROGS_VERSION@"
+ .SH NAME
+-resize2fs \- ext2/ext3/ext4 file system resizer
++@RESIZEFSPROG@ \- ext2/ext3/ext4 file system resizer
+ .SH SYNOPSIS
+-.B resize2fs
++.B @RESIZEFSPROG@
+ [
+ .B \-fFpPM
+ ]
+@@ -24,7 +24,7 @@ resize2fs \- ext2/ext3/ext4 file system 
+ ]
+ .SH DESCRIPTION
+ The 
+-.B resize2fs 
++.B @RESIZEFSPROG@
+ program will resize ext2, ext3, or ext4 file systems.  It can be used to
+ enlarge or shrink an unmounted file system located on 
+ .IR device .
+@@ -60,7 +60,7 @@ gigabytes, as the amazingly silly ``gibi
+ gibber, doesn't it?
+ .PP
+ The
+-.B resize2fs
++.B @RESIZEFSPROG@
+ program does not manipulate the size of partitions.  If you wish to enlarge
+ a filesystem, you must make sure you can expand the size of the
+ underlying partition first.  This can be done using 
+@@ -75,11 +75,11 @@ disk cylinder as before!  Otherwise, the
+ certainly not work, and you may lose your entire filesystem.  
+ After running
+ .BR fdisk (8),
+-run resize2fs to resize the ext2 filesystem 
++run @RESIZEFSPROG@ to resize the ext2 filesystem
+ to use all of the space in the newly enlarged partition.
+ .PP
+ If you wish to shrink an ext2 partition, first use 
+-.B resize2fs
++.B @RESIZEFSPROG@
+ to shrink the size of filesystem.  Then you may use 
+ .BR fdisk (8)
+ to shrink the size of the partition.  When shrinking the size of 
+@@ -88,7 +88,7 @@ of the ext2 filesystem!
+ .SH OPTIONS
+ .TP
+ .B \-d \fIdebug-flags
+-Turns on various resize2fs debugging features, if they have been compiled 
++Turns on various @RESIZEFSPROG@ debugging features, if they have been compiled
+ into the binary.
+ .I debug-flags
+ should be computed by adding the numbers of the desired features 
+@@ -101,13 +101,13 @@ from the following list:
+ \	8\	\-\ Debug moving the inode table
+ .TP 
+ .B \-f
+-Forces resize2fs to proceed with the filesystem resize operation, overriding 
+-some safety checks which resize2fs normally enforces.
++Forces @RESIZEFSPROG@ to proceed with the filesystem resize operation, overriding
++some safety checks which @RESIZEFSPROG@ normally enforces.
+ .TP
+ .B \-F
+ Flush the filesystem device's buffer caches before beginning.  Only
+ really useful for doing 
+-.B resize2fs
++.B @RESIZEFSPROG@
+ time trials.
+ .TP
+ .B \-M
+@@ -115,7 +115,7 @@ Shrink the filesystem to the minimum siz
+ .TP
+ .B \-p
+ Prints out a percentage completion bars for each
+-.B resize2fs
++.B @RESIZEFSPROG@
+ operation during an offline resize, so that the user can keep track 
+ of what the program is doing.
+ .TP
+@@ -124,25 +124,25 @@ Print the minimum size of the filesystem
+ .TP
+ .B \-S \fIRAID-stride
+ The
+-.B resize2fs
++.B @RESIZEFSPROG@
+ program will heuristically determine the RAID stride that was specified
+ when the filesystem was created.  This option allows the user to
+-explicitly specify a RAID stride setting to be used by resize2fs instead.
++explicitly specify a RAID stride setting to be used by @RESIZEFSPROG@ instead.
+ .SH KNOWN BUGS
+-The minimum size of the filesystem as estimated by resize2fs may be
++The minimum size of the filesystem as estimated by @RESIZEFSPROG@ may be
+ incorrect, especially for filesystems with 1k and 2k blocksizes.
+ .SH AUTHOR
+-.B resize2fs
++.B @RESIZEFSPROG@
+ was written by Theodore Ts'o <tytso@mit.edu>.
+ .SH COPYRIGHT
+-Resize2fs is Copyright 1998 by Theodore Ts'o and PowerQuest, Inc.  All
++@RESIZEFSPROG@ is Copyright 1998 by Theodore Ts'o and PowerQuest, Inc.  All
+ rights reserved.  
+ As of April, 2000
+-.B Resize2fs
++.B @RESIZEFSPROG@
+ may be redistributed under the terms of the GPL.
+ .SH SEE ALSO
+ .BR fdisk (8),
+-.BR e2fsck (8),
+-.BR mke2fs (8),
++.BR @FSCKPROG@ (8),
++.BR @MKFSPROG@ (8),
+ .BR lvm (8), 
+ .BR lvextend (8)
+Index: ldiskfsprogs/tests/Makefile.in
+===================================================================
+--- ldiskfsprogs.orig/tests/Makefile.in
++++ ldiskfsprogs/tests/Makefile.in
+@@ -13,7 +13,7 @@ INSTALL = @INSTALL@
+ 
+ all:: @DO_TEST_SUITE@
+ 
+-test_script: test_script.in Makefile mke2fs.conf
++test_script: test_script.in Makefile mke2fs.conf create_links
+ 	@echo "Creating test_script..."
+ 	@echo "#!/bin/sh" > test_script
+ @HTREE_CMT@	@echo "HTREE=y" >> test_script
+@@ -26,6 +26,31 @@ test_script: test_script.in Makefile mke
+ mke2fs.conf: $(srcdir)/mke2fs.conf.in
+ 	$(CP) $(srcdir)/mke2fs.conf.in mke2fs.conf
+ 
++create_links:
++	test "@DEBUGFSPROG@" == "debugfs" || test -x ../debugfs/debugfs \
++		|| $(LN_S) @DEBUGFSPROG@ ../debugfs/debugfs
++	test "@FSCKPROG@" == "e2fsck" || test -x ../e2fsck/e2fsck \
++		|| $(LN_S) @FSCKPROG@ ../e2fsck/e2fsck
++	test "@RESIZEFSPROG@" == "resize2fs" || test -x ../resize/resize2fs \
++		|| $(LN_S) @RESIZEFSPROG@ ../resize/resize2fs
++	test "@TUNEFSPROG@" == "tune2fs" || test -x ../misc/tune2fs \
++		|| $(LN_S) @TUNEFSPROG@ ../misc/tune2fs
++	test "@IMAGEPROG@" == "e2image" || test -x ../misc/e2image \
++		|| $(LN_S) @IMAGEPROG@ ../misc/e2image
++	test "@DUMPFSPROG@" == "dumpe2fs" || test -x ../misc/dumpe2fs \
++		|| $(LN_S) @DUMPFSPROG@ ../misc/dumpe2fs
++	test "@MKFSPROG@" == "mke2fs" || test -x ../misc/mke2fs \
++		|| $(LN_S) @MKFSPROG@ ../misc/mke2fs
++
++remove_links:
++	test "@DEBUGFSPROG@" == "debugfs" || $(RM) -f ../debugfs/debugfs
++	test "@FSCKPROG@" == "e2fsck" || $(RM) -f ../e2fsck/e2fsck
++	test "@RESIZEFSPROG@" == "resize2fs" || $(RM) -f ../resize/resize2fs
++	test "@TUNEFSPROG@" == "tune2fs" || $(RM) -f ../misc/tune2fs
++	test "@IMAGEPROG@" == "e2image" || $(RM) -f ../misc/e2image
++	test "@DUMPFSPROG@" == "dumpe2fs" || $(RM) -f ../misc/dumpe2fs
++	test "@MKFSPROG@" == "mke2fs" || $(RM) -f ../misc/mke2fs
++
+ check:: test_script
+ 	@echo "Removing remnants of earlier tests..."
+ 	$(RM) -f *~ *.log *.new *.failed *.ok test.img2*
+@@ -67,7 +92,7 @@ testend: test_script ${TDIR}/image
+ 	@echo; echo "Hopefully e2fsck now fixes this problem properly."
+ 	@echo "If all is well, edit ${TDIR}/name and rename ${TDIR}."
+ 
+-clean::
++clean:: remove_links
+ 	$(RM) -f *~ *.log *.new *.failed *.ok test.img* test_script mke2fs.conf
+ 
+ distclean:: clean
+Index: ldiskfsprogs/util/subst.conf.in
+===================================================================
+--- ldiskfsprogs.orig/util/subst.conf.in
++++ ldiskfsprogs/util/subst.conf.in
+@@ -13,6 +13,19 @@ SIZEOF_LONG_LONG	@SIZEOF_LONG_LONG@
+ SIZEOF_LONG		@SIZEOF_LONG@
+ SIZEOF_INT		@SIZEOF_INT@
+ SIZEOF_SHORT		@SIZEOF_SHORT@
++FSNAME			@FSNAME@
++E2FSPROGS		@E2FSPROGS@
++E2FSPROGSURL		@E2FSPROGSURL@
++MKFSPROG		@MKFSPROG@
++DEBUGFSPROG		@DEBUGFSPROG@
++TUNEFSPROG		@TUNEFSPROG@
++LABELPROG		@LABELPROG@
++DUMPFSPROG		@DUMPFSPROG@
++FSCKPROG		@FSCKPROG@
++PFSCKPROG		@PFSCKPROG@
++IMAGEPROG		@IMAGEPROG@
++RESIZEFSPROG		@RESIZEFSPROG@
++SCANPROG		@SCANPROG@
+ datarootdir		@datarootdir@
+ datadir			@datadir@
+ root_sysconfdir		@root_sysconfdir@
