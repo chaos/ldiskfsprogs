@@ -92,7 +92,7 @@ Index: e2fsprogs/configure.in
  dnl handle --enable-compression
  dnl
  AC_ARG_ENABLE([compression],
-@@ -763,6 +811,7 @@ AC_CHECK_HEADERS(net/if.h,,,
+@@ -763,6 +819,7 @@ AC_CHECK_HEADERS(net/if.h,,,
  #include <sys/socket.h>
  #endif
  ]])
@@ -100,7 +100,7 @@ Index: e2fsprogs/configure.in
  AC_FUNC_VPRINTF
  dnl Check to see if dirent has member d_reclen. On cygwin those d_reclen
  dnl is not decleared.
-@@ -880,6 +929,31 @@ SOCKET_LIB=''
+@@ -880,6 +937,31 @@ SOCKET_LIB=''
  AC_CHECK_LIB(socket, socket, [SOCKET_LIB=-lsocket])
  AC_SUBST(SOCKET_LIB)
  dnl
@@ -419,7 +419,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  	int problem = 0;
  
  	inode = (struct ext2_inode_large *) pctx->inode;
-@@ -458,6 +461,9 @@ static void check_ea_in_inode(e2fsck_t c
+@@ -459,6 +462,9 @@ static void check_ea_in_inode(e2fsck_t c
  			goto fix;
  		}
  
@@ -429,7 +429,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  		/* If EA value is stored in external inode then it does not
  		 * consume space here */
  		if (entry->e_value_inum == 0)
-@@ -465,6 +471,10 @@ static void check_ea_in_inode(e2fsck_t c
+@@ -466,8 +472,16 @@ static void check_ea_in_inode(e2fsck_t c
  
  		entry = EXT2_EXT_ATTR_NEXT(entry);
  	}
@@ -438,11 +438,18 @@ Index: e2fsprogs/e2fsck/pass1.c
 +		e2fsck_lfsck_save_ea(ctx, pctx->ino, inode->i_generation,
 +				     lmm, lma);
  fix:
- 	/*
+-	/*
++	if (lmm)
++		ext2fs_free_mem(&lmm);
++	if (lma)
++		ext2fs_free_mem(&lma);
++ /*
  	 * it seems like a corruption. it's very unlikely we could repair
-@@ -1005,6 +1015,12 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 	 * EA(s) in automatic fashion -bzzz
+ 	 */
+@@ -1006,6 +1020,12 @@ void e2fsck_pass1(e2fsck_t ctx)
  		ext2fs_mark_block_bitmap2(ctx->block_found_map,
-					  fs->super->s_mmp_block);
+ 					  fs->super->s_mmp_block);
  
 +	if (!(ctx->options & E2F_OPT_READONLY) &&
 +	    (ctx->lustre_devtype & LUSTRE_TYPE) == LUSTRE_MDS) {
@@ -452,8 +459,8 @@ Index: e2fsprogs/e2fsck/pass1.c
 +
  	while (1) {
  		if (ino % EXT2_MMP_INODE_INTERVAL == 0) {
-			if (e2fsck_mmp_update(fs))
-@@ -1513,6 +1529,9 @@ void e2fsck_pass1(e2fsck_t ctx)
+ 			if (e2fsck_mmp_update(fs))
+@@ -1511,6 +1531,9 @@ void e2fsck_pass1(e2fsck_t ctx)
  		}
  		e2fsck_pass1_dupblocks(ctx, block_buf);
  	}
@@ -463,7 +470,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  	ext2fs_free_mem(&inodes_to_process);
  endit:
  	e2fsck_use_inode_shortcuts(ctx, 0);
-@@ -1780,6 +1799,8 @@ static int check_ext_attr(e2fsck_t ctx, 
+@@ -1778,6 +1801,8 @@ static int check_ext_attr(e2fsck_t ctx, 
  	struct ext2_ext_attr_entry *entry;
  	int		count;
  	region_t	region = 0;
@@ -472,7 +479,7 @@ Index: e2fsprogs/e2fsck/pass1.c
  	int ret;
  
  	blk = ext2fs_file_acl_block(inode);
-@@ -1936,8 +1957,19 @@ static int check_ext_attr(e2fsck_t ctx, 
+@@ -1934,13 +1959,28 @@ static int check_ext_attr(e2fsck_t ctx, 
  			entry->e_hash = hash;
  		}
  
@@ -492,6 +499,27 @@ Index: e2fsprogs/e2fsck/pass1.c
  	if (region_allocate(region, (char *)entry - (char *)header, 4)) {
  		if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
  			goto clear_extattr;
+ 	}
+ 	region_free(region);
++	if (lmm)
++		ext2fs_free_mem(&lmm);
++	if (lma)
++		ext2fs_free_mem(&lma);
+ 
+ 	count = header->h_refcount - 1;
+ 	if (count)
+@@ -1950,6 +1990,11 @@ static int check_ext_attr(e2fsck_t ctx, 
+ 	return 1;
+ 
+ clear_extattr:
++	if (lmm)
++                ext2fs_free_mem(&lmm);
++	if (lma)
++		ext2fs_free_mem(&lma);
++
+ 	if (region)
+ 		region_free(region);
+ 	ext2fs_file_acl_block_set(inode, 0);
 Index: e2fsprogs/e2fsck/unix.c
 ===================================================================
 --- e2fsprogs.orig/e2fsck/unix.c
@@ -693,7 +721,7 @@ Index: e2fsprogs/misc/mke2fs.c
 ===================================================================
 --- e2fsprogs.orig/misc/mke2fs.c
 +++ e2fsprogs/misc/mke2fs.c
-@@ -1398,7 +1398,7 @@ profile_error:
+@@ -1401,7 +1401,7 @@ profile_error:
  			}
  			break;
  		case 'v':
@@ -734,17 +762,15 @@ Index: e2fsprogs/e2fsprogs.spec.in
  Provides: e2fsprogs-libs = %{version} ldiskfsprogs = %{version}
  Obsoletes: e4fsprogs e2fsprogs-libs < %{version}
  %endif
-@@ -72,7 +76,8 @@ SMP systems.
+@@ -72,6 +76,7 @@ SMP systems.
  
  %build
  %configure --enable-elf-shlibs --enable-nls --disable-defrag \
--	%{?extra_config_flags:%extra_config_flags}
 +	@WITH_LUSTRE@ @ENABLE_LFSCK@ \
-+	%{?extra_config_flags:%extra_config_flags}
+ 	%{?extra_config_flags:%extra_config_flags}
  make
  make check
- 
-@@ -142,6 +146,7 @@ exit 0
+@@ -142,6 +147,7 @@ exit 0
  %{_root_sbindir}/resize2fs
  %{_root_sbindir}/tune2fs
  %{_sbindir}/filefrag
@@ -752,7 +778,7 @@ Index: e2fsprogs/e2fsprogs.spec.in
  %{_sbindir}/mklost+found
  %{_sbindir}/e2freefrag
  
-@@ -170,6 +175,7 @@ exit 0
+@@ -169,6 +175,7 @@ exit 0
  %{_mandir}/man8/debugfs.8*
  %{_mandir}/man8/dumpe2fs.8*
  %{_mandir}/man8/e2fsck.8*
@@ -3713,7 +3739,7 @@ Index: e2fsprogs/e2fsck/pass6.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2fsck/pass6.c
-@@ -0,0 +1,1511 @@
+@@ -0,0 +1,1551 @@
 +/* -*- mode: c; c-basic-offset: 8; -*-
 + * vim:shiftwidth=8:tabstop=8:
 + *
@@ -4146,6 +4172,11 @@ Index: e2fsprogs/e2fsck/pass6.c
 +			 struct lov_user_md **lmm,
 +			 struct lustre_mdt_attrs **lma)
 +{
++	char *ea = NULL;
++	int retval;
++	unsigned int got;
++	ext2_file_t file;
++
 +	/* This ensures that we don't open the file here if traversing an OST */
 +	if ((ctx->lustre_devtype & LUSTRE_TYPE) != LUSTRE_MDS)
 +		return 0;
@@ -4157,24 +4188,59 @@ Index: e2fsprogs/e2fsck/pass6.c
 +	    entry->e_name_index == EXT3_XATTR_INDEX_LUSTRE)
 +		return 0;
 +
++	ea = e2fsck_allocate_memory(ctx, entry->e_value_size,
++					   "EA");
++
++	if (entry->e_value_inum != 0) {
++		/* EA in external inode */
++		retval = ext2fs_file_open(ctx->fs, entry->e_value_inum,
++					  0, &file);
++		if (!retval) {
++			retval = ext2fs_file_read(file, ea,
++						  entry->e_value_size, &got);
++			ext2fs_file_close(file);
++			if (retval != 0) {
++				ext2fs_free_mem(&ea);
++				return 0;
++			}
++		} else {
++			ext2fs_free_mem(&ea);
++			return 0;
++		}
++	} else {
++		memcpy(ea, value, entry->e_value_size);
++	}
++
 +	if (strncmp(entry->e_name, XATTR_LUSTRE_MDS_LOV_EA,
 +		    entry->e_name_len) == 0) {
-+		*lmm = value;
++	        if (*lmm) {
++			ext2fs_free_mem(&ea);
++			return -EINVAL;
++		}
++		*lmm = ea;
 +		letocpu_lov_user_md(*lmm);
 +
 +		if (lfsck_check_lov_ea(ctx, *lmm)) {
 +			*lmm = NULL;
 +			ctx->flags |= E2F_FLAG_ABORT;
++			ext2fs_free_mem(&ea);
 +			return -EINVAL;
 +		}
 +	} else if (strncmp(entry->e_name, XATTR_LUSTRE_MDT_LMA_EA,
 +			   entry->e_name_len) == 0) {
-+		*lma = value;
++		if (*lma) {
++			ext2fs_free_mem(&ea);
++			return -EINVAL;
++		}
++		*lma = ea;
 +		if (lfsck_check_lma_ea(ctx, *lma)) {
 +			*lma = NULL;
 +			ctx->flags |= E2F_FLAG_ABORT;
++			ext2fs_free_mem(&ea);
 +			return -EINVAL;
 +		}
++	} else {
++		ext2fs_free_mem(&ea);
 +	}
 +
 +	return 0;
