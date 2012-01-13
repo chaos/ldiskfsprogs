@@ -2,19 +2,19 @@ Append a chaos version number.
 
 Index: ldiskfsprogs/version.h
 ===================================================================
---- ldiskfsprogs.orig/version.h
-+++ ldiskfsprogs/version.h
+--- ldiskfsprogs.orig/version.h	2012-01-12 18:25:30.343026486 -0800
++++ ldiskfsprogs/version.h	2012-01-12 18:26:38.951490052 -0800
 @@ -7,5 +7,5 @@
   * file may be redistributed under the GNU Public License v2.
   */
  
 -#define E2FSPROGS_VERSION "1.41.90.wc3"
-+#define E2FSPROGS_VERSION "1.41.90.wc3.1chaos"
++#define E2FSPROGS_VERSION "1.41.90.wc3.2chaos"
  #define E2FSPROGS_DATE "28-May-2011"
 Index: ldiskfsprogs/e2fsprogs-RHEL-6.spec.in
 ===================================================================
---- ldiskfsprogs.orig/e2fsprogs-RHEL-6.spec.in
-+++ ldiskfsprogs/e2fsprogs-RHEL-6.spec.in
+--- ldiskfsprogs.orig/e2fsprogs-RHEL-6.spec.in	2012-01-12 18:25:31.423033777 -0800
++++ ldiskfsprogs/e2fsprogs-RHEL-6.spec.in	2012-01-12 18:25:31.439033885 -0800
 @@ -4,7 +4,7 @@
  Summary: Utilities for managing ext2, ext3, and ext4 filesystems
  Name: @E2FSPROGS@
