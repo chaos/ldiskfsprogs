@@ -3739,7 +3739,7 @@ Index: e2fsprogs/e2fsck/pass6.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2fsck/pass6.c
-@@ -0,0 +1,1551 @@
+@@ -0,0 +1,1556 @@
 +/* -*- mode: c; c-basic-offset: 8; -*-
 + * vim:shiftwidth=8:tabstop=8:
 + *
@@ -4184,6 +4184,9 @@ Index: e2fsprogs/e2fsck/pass6.c
 +	if (!LINUX_S_ISREG(inode->i_mode))
 +		return 0;
 +
++	if (entry->e_name_len == 0)
++		return 0;
++
 +	if (entry->e_name_index == EXT3_XATTR_INDEX_TRUSTED &&
 +	    entry->e_name_index == EXT3_XATTR_INDEX_LUSTRE)
 +		return 0;
@@ -4211,7 +4214,8 @@ Index: e2fsprogs/e2fsck/pass6.c
 +		memcpy(ea, value, entry->e_value_size);
 +	}
 +
-+	if (strncmp(entry->e_name, XATTR_LUSTRE_MDS_LOV_EA,
++	if (entry->e_name_len == strlen(XATTR_LUSTRE_MDS_LOV_EA) &&
++	    strncmp(entry->e_name, XATTR_LUSTRE_MDS_LOV_EA,
 +		    entry->e_name_len) == 0) {
 +	        if (*lmm) {
 +			ext2fs_free_mem(&ea);
@@ -4226,7 +4230,8 @@ Index: e2fsprogs/e2fsck/pass6.c
 +			ext2fs_free_mem(&ea);
 +			return -EINVAL;
 +		}
-+	} else if (strncmp(entry->e_name, XATTR_LUSTRE_MDT_LMA_EA,
++	} else if (entry->e_name_len == strlen(XATTR_LUSTRE_MDT_LMA_EA) &&
++		   strncmp(entry->e_name, XATTR_LUSTRE_MDT_LMA_EA,
 +			   entry->e_name_len) == 0) {
 +		if (*lma) {
 +			ext2fs_free_mem(&ea);
