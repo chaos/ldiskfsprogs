@@ -1,0 +1,82 @@
+commit 08ae93a2eda03817deabf08d4da9015a283ed56b
+Author: Niu Yawei <niu@whamcloud.com>
+Date:   Sat Nov 19 23:08:03 2011 -0500
+
+    libext2fs: enforce a max nested link count in ext2fs_find_block_device()
+    
+    Define EXT2FS_MAX_NESTED_LINKS as 8, and check the link count to make
+    sure we don't exceed it in ext2fs_find_block_device() and
+    follow_link().  This fixes a potential infinite loop in
+    ext2fs_find_block_device() if there are symbolic loop links in the
+    device directory.
+    
+    Signed-off-by: Niu Yawei <niu@whamcloud.com>
+    Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+
+diff --git a/lib/ext2fs/ext2fsP.h b/lib/ext2fs/ext2fsP.h
+index b182d7f..82e1ba0 100644
+--- a/lib/ext2fs/ext2fsP.h
++++ b/lib/ext2fs/ext2fsP.h
+@@ -11,6 +11,8 @@
+ 
+ #include "ext2fs.h"
+ 
++#define EXT2FS_MAX_NESTED_LINKS  8
++
+ /*
+  * Badblocks list
+  */
+diff --git a/lib/ext2fs/finddev.c b/lib/ext2fs/finddev.c
+index 13ef14b..311608d 100644
+--- a/lib/ext2fs/finddev.c
++++ b/lib/ext2fs/finddev.c
+@@ -34,6 +34,7 @@
+ 
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
++#include "ext2fsP.h"
+ 
+ struct dir_list {
+ 	char	*name;
+@@ -128,6 +129,7 @@ char *ext2fs_find_block_device(dev_t device)
+ 	struct dir_list *list = 0, *new_list = 0;
+ 	struct dir_list *current;
+ 	char	*ret_path = 0;
++	int    level = 0;
+ 
+ 	/*
+ 	 * Add the starting directories to search...
+@@ -154,6 +156,9 @@ char *ext2fs_find_block_device(dev_t device)
+ 		if (list == 0) {
+ 			list = new_list;
+ 			new_list = 0;
++			/* Avoid infinite loop */
++			if (++level >= EXT2FS_MAX_NESTED_LINKS)
++				break;
+ 		}
+ 	}
+ 	free_dirlist(&list);
+diff --git a/lib/ext2fs/namei.c b/lib/ext2fs/namei.c
+index 6bbb124..efcc02b 100644
+--- a/lib/ext2fs/namei.c
++++ b/lib/ext2fs/namei.c
+@@ -20,6 +20,7 @@
+ 
+ #include "ext2_fs.h"
+ #include "ext2fs.h"
++#include "ext2fsP.h"
+ 
+ static errcode_t open_namei(ext2_filsys fs, ext2_ino_t root, ext2_ino_t base,
+ 			    const char *pathname, size_t pathlen, int follow,
+@@ -45,9 +46,9 @@ static errcode_t follow_link(ext2_filsys fs, ext2_ino_t root, ext2_ino_t dir,
+ 		*res_inode = inode;
+ 		return 0;
+ 	}
+-	if (link_count++ > 5) {
++	if (link_count++ >= EXT2FS_MAX_NESTED_LINKS)
+ 		return EXT2_ET_SYMLINK_LOOP;
+-	}
++
+ 	/* FIXME-64: Actually, this is FIXME EXTENTS */
+ 	if (ext2fs_inode_data_blocks(fs,&ei)) {
+ 		retval = ext2fs_get_mem(fs->blocksize, &buffer);

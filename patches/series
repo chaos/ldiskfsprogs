@@ -76,6 +76,7 @@ e2fsprogs-e2scan.patch
 e2fsprogs-tests-s_basic_scan.patch
 e2fsprogs-data_in_dirent.patch
 e2fsprogs-tests-f_data_in_dirent.patch
+e2fsprogs-max-linkcount-fix.patch
 e2fsprogs-rpm_RHEL-6.patch
 e2fsprogs-1.40.4-sb_feature_check_ignore.patch
 e2fsprogs-rpm_SLES-11.patch
