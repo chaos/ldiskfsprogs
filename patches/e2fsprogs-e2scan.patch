@@ -2,7 +2,7 @@ Index: e2fsprogs/configure.in
 ===================================================================
 --- e2fsprogs.orig/configure.in
 +++ e2fsprogs/configure.in
-@@ -589,6 +589,28 @@ DEBUGFS_CMT=
+@@ -597,6 +597,28 @@ DEBUGFS_CMT=
  )
  AC_SUBST(DEBUGFS_CMT)
  dnl
@@ -31,7 +31,7 @@ Index: e2fsprogs/configure.in
  dnl handle --enable-imager
  dnl
  AC_ARG_ENABLE([imager],
-@@ -812,6 +834,10 @@ AC_CHECK_HEADERS(net/if.h,,,
+@@ -820,6 +842,10 @@ AC_CHECK_HEADERS(net/if.h,,,
  #endif
  ]])
  AC_CHECK_HEADERS(db.h)
@@ -42,7 +42,7 @@ Index: e2fsprogs/configure.in
  AC_FUNC_VPRINTF
  dnl Check to see if dirent has member d_reclen. On cygwin those d_reclen
  dnl is not decleared.
-@@ -954,6 +980,52 @@ AC_CHECK_LIB(db-4.8, db_env_create,
+@@ -962,6 +988,52 @@ AC_CHECK_LIB(db-4.8, db_env_create,
  AC_DEFINE(HAVE_DB4)])
  AC_SUBST(DB4VERSION)
  dnl
@@ -95,7 +95,7 @@ Index: e2fsprogs/configure.in
  dnl See if optreset exists
  dnl
  AC_MSG_CHECKING(for optreset)
-@@ -1170,7 +1241,7 @@ for i in MCONFIG Makefile e2fsprogs.spec
+@@ -1178,7 +1250,7 @@ for i in MCONFIG Makefile e2fsprogs.spec
  	lib/ss/ss.pc lib/uuid/uuid.pc lib/et/com_err.pc \
  	lib/e2p/e2p.pc lib/blkid/blkid.pc lib/ext2fs/ext2fs.pc \
  	misc/Makefile ext2ed/Makefile e2fsck/Makefile \
@@ -114,8 +114,8 @@ Index: e2fsprogs/e2fsprogs.spec.in
  %{_root_sbindir}/tune2fs
 +@E2SCAN_CMT@%{_sbindir}/e2scan
  %{_sbindir}/filefrag
+ @LFSCK_CMT@%{_sbindir}/lfsck
  %{_sbindir}/mklost+found
- %{_sbindir}/e2freefrag
 @@ -183,6 +184,7 @@ exit 0
  %{_mandir}/man8/fsck.ext4dev.8*
  %{_mandir}/man8/e2image.8*
@@ -1309,7 +1309,7 @@ Index: e2fsprogs/e2scan/filelist.c
 ===================================================================
 --- /dev/null
 +++ e2fsprogs/e2scan/filelist.c
-@@ -0,0 +1,456 @@
+@@ -0,0 +1,457 @@
 +#define _GNU_SOURCE
 +#define _FILE_OFFSET_BITS 64
 +
@@ -1711,7 +1711,8 @@ Index: e2fsprogs/e2scan/filelist.c
 +	assert(dir != NULL);
 +
 +	dirent2 = (struct ext2_dir_entry_2 *)dirent;
-+	is_dirname = (dirent2->file_type == EXT2_FT_DIR) ? 1 : 0;
++	is_dirname = ((dirent2->file_type & EXT2_FT_MASK) == EXT2_FT_DIR) ?
++		     1 : 0;
 +	if (is_dirname) {
 +		subdir = find_dentry(dirent->inode);
 +		if (subdir == NULL)
