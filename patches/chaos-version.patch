@@ -9,7 +9,7 @@ Index: ldiskfsprogs/version.h
   */
  
 -#define E2FSPROGS_VERSION "1.41.90.wc3"
-+#define E2FSPROGS_VERSION "1.41.90.wc3.2chaos"
++#define E2FSPROGS_VERSION "1.41.90.3chaos.wc3"
  #define E2FSPROGS_DATE "28-May-2011"
 Index: ldiskfsprogs/e2fsprogs-RHEL-6.spec.in
 ===================================================================
