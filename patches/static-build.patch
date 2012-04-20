@@ -1,0 +1,13 @@
+Index: ldiskfsprogs/e2fsprogs-RHEL-6.spec.in
+===================================================================
+--- ldiskfsprogs.orig/e2fsprogs-RHEL-6.spec.in	2012-01-12 18:27:28.055822338 -0800
++++ ldiskfsprogs/e2fsprogs-RHEL-6.spec.in	2012-01-12 18:27:46.631948150 -0800
+@@ -156,7 +156,7 @@
+ #[AED] %patch2 -p1 -b .e4defrag
+ 
+ %build
+-%configure --enable-elf-shlibs --enable-nls --disable-uuidd --disable-fsck \
++%configure --enable-nls --disable-uuidd --disable-fsck \
+ 	   --disable-e2initrd-helper --disable-libblkid --disable-libuuid \
+ 	   --disable-defrag \
+ 	   @WITH_LUSTRE@ @ENABLE_LFSCK@ \

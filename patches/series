@@ -81,3 +81,10 @@ e2fsprogs-rpm_RHEL-6.patch
 e2fsprogs-1.40.4-sb_feature_check_ignore.patch
 e2fsprogs-rpm_SLES-11.patch
 ldiskfsprogs-rename-support.patch
+<<<<<<< HEAD
+||||||| parent of 58711d0... Fix build by compiling without --enable-elf-shlibs
+chaos-version.patch
+=======
+static-build.patch
+chaos-version.patch
+>>>>>>> 58711d0... Fix build by compiling without --enable-elf-shlibs
